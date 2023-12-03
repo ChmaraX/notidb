@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ChmaraX/notidb/internal"
 	"github.com/spf13/cobra"
 )
 
@@ -31,20 +32,11 @@ func init() {
 	addEntryCmd.Flags().String("content", "", "Content of the new entry")
 	addEntryCmd.Flags().String("database", "", "ID of the database to add entry to")
 
-	rootCmd.AddCommand(listDatabasesCmd)
+	rootCmd.AddCommand(internal.ListDatabasesCmd())
 	rootCmd.AddCommand(addEntryCmd)
 	rootCmd.AddCommand(setDefaultCmd)
 	rootCmd.AddCommand(listEntriesCmd)
 
-}
-
-var listDatabasesCmd = &cobra.Command{
-	Use:     "list-databases",
-	Aliases: []string{"ld"},
-	Short:   "Lists all available databases",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("list-databases called")
-	},
 }
 
 var addEntryCmd = &cobra.Command{
