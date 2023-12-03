@@ -8,17 +8,17 @@ import (
 )
 
 const (
-	usage   = `notion-cli`
-	example = `  notion-cli ld
-  notion-cli a --title "Meeting Notes" --content "Notes from the team meeting on 3rd Dec"
-  notion-cli sd --database 1234567890abcdef
-  notion-cli le --database 1234567890abcdef`
+	usage   = `notidb`
+	example = `  notidb ld
+  notidb a --title "Meeting Notes" --content "Notes from the team meeting on 3rd Dec"
+  notidb sd --database 1234567890abcdef
+  notidb le --database 1234567890abcdef`
 )
 
 var rootCmd = &cobra.Command{
 	Use:           usage,
 	Example:       example,
-	Short:         "notion-cli is a CLI tool for interacting with Notion databases",
+	Short:         "notidb is a CLI tool for interacting with Notion databases",
 	Version:       "0.0.1",
 	SilenceErrors: true,
 }

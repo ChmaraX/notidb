@@ -1,4 +1,4 @@
-module github.com/ChmaraX/notion-cli
+module github.com/ChmaraX/notidb
 
 go 1.19
 
