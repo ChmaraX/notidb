@@ -22,6 +22,7 @@ var (
 	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
 	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
 	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+	checkMark         = lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Render("✓")
 )
 
 type item struct {
@@ -112,7 +113,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	if m.choice != "" {
-		return quitTextStyle.Render(fmt.Sprintf("Database '%s' successfuly set as default.", m.choice))
+		highlightStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("170"))
+		return quitTextStyle.Render(fmt.Sprintf("%s Default database successfuly set to: %s", checkMark, highlightStyle.Render(m.choice)))
 	}
 	if m.quitting {
 		if m.defaultDbId == settings.NoDefaultDatabaseId {
