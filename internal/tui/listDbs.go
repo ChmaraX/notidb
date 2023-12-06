@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ChmaraX/notidb/internal"
+	"github.com/ChmaraX/notidb/internal/settings"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -43,30 +44,34 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
-	str := fmt.Sprintf("%d. %s", index+1, i.title)
+	var builder strings.Builder
+	builder.WriteString(fmt.Sprintf("%d. %s", index+1, i.title))
 
 	if i.def {
-		str = fmt.Sprintf("%d. %s [default]", index+1, i.title)
+		builder.WriteString(" [default]")
 	}
 
 	if showIds {
-		str = fmt.Sprintf("%d. %s (%s)", index+1, i.title, i.id)
+		builder.WriteString(fmt.Sprintf(" (%s)", i.id))
 	}
 
-	fn := itemStyle.Render
+	var renderFn func(...string) string
 	if index == m.Index() {
-		fn = func(s ...string) string {
+		renderFn = func(s ...string) string {
 			return selectedItemStyle.Render("> " + strings.Join(s, " "))
 		}
+	} else {
+		renderFn = itemStyle.Render
 	}
 
-	fmt.Fprint(w, fn(str))
+	fmt.Fprint(w, renderFn(builder.String()))
 }
 
 type model struct {
-	list     list.Model
-	choice   string
-	quitting bool
+	list        list.Model
+	choice      string
+	quitting    bool
+	defaultDbId string
 }
 
 func (m model) Init() tea.Cmd {
@@ -81,7 +86,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
-		case "ctrl+c":
+		case "ctrl+c", "q":
 			m.quitting = true
 			return m, tea.Quit
 
@@ -89,12 +94,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
 				m.choice = string(i.title)
+				settings.SetDefaultDatabase(i.id)
 			}
-			// TODO: storage.saveDefaulDb()
 			return m, tea.Quit
 
 		case "c":
-			// switch showIds
 			showIds = !showIds
 			return m, nil
 		}
@@ -107,13 +111,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-
 	if m.choice != "" {
-		return quitTextStyle.Render(fmt.Sprintf("%s? Sounds good to me.", m.choice))
-		// TODO: save choice persistently
+		return quitTextStyle.Render(fmt.Sprintf("Database '%s' successfuly set as default.", m.choice))
 	}
 	if m.quitting {
-		return quitTextStyle.Render("No database set.")
+		if m.defaultDbId == settings.NoDefaultDatabaseId {
+			return quitTextStyle.Render("No default database set.")
+		}
+		return quitTextStyle.Render("No changes made.")
 	}
 	return "\n" + m.list.View()
 }
@@ -134,7 +139,7 @@ func GetDbsListTUI(dbs []internal.NotionDb, defaultDbId string) {
 	l.Styles.PaginationStyle = paginationStyle
 	l.Styles.HelpStyle = helpStyle
 
-	m := model{list: l}
+	m := model{list: l, defaultDbId: defaultDbId}
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Println("Error running program:", err)
