@@ -6,6 +6,14 @@ import (
 	"path/filepath"
 )
 
+const (
+	NoDefaultDatabaseId = "-1"
+	NotiDBAppDir        = ".notidb"
+	SettingsFileName    = "settings.json"
+	DirPermMode         = 0700
+	FilePermMode        = 0600
+)
+
 type UserSettings struct {
 	DefaultDatabaseId string `json:"defaultDatabase"`
 }
@@ -47,14 +55,14 @@ func EnsureSettingsFileExists() error {
 	appDir := filepath.Dir(settingsFilePath)
 
 	// create the directory if it doesn't exist
-	if err := os.MkdirAll(appDir, 0700); err != nil {
+	if err := os.MkdirAll(appDir, DirPermMode); err != nil {
 		return err
 	}
 
 	// check if the settings file exists, and create it if not
 	if _, err := os.Stat(settingsFilePath); os.IsNotExist(err) {
 		defaultSettings := UserSettings{
-			DefaultDatabaseId: "-1",
+			DefaultDatabaseId: NoDefaultDatabaseId,
 		}
 		return writeSettings(&defaultSettings, settingsFilePath)
 	}
@@ -67,8 +75,8 @@ func getSettingsFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	appDir := filepath.Join(homeDir, ".notidb")
-	return filepath.Join(appDir, "settings.json"), nil
+	appDir := filepath.Join(homeDir, NotiDBAppDir)
+	return filepath.Join(appDir, SettingsFileName), nil
 }
 
 func readSettings(filePath string) (*UserSettings, error) {
@@ -86,5 +94,5 @@ func writeSettings(settings *UserSettings, filePath string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filePath, data, 0600)
+	return os.WriteFile(filePath, data, FilePermMode)
 }

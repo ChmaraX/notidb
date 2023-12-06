@@ -38,7 +38,7 @@ var listDbsCmd = &cobra.Command{
 		}
 
 		// check if defaultDbId exists in dbs
-		if !defaultDbExists(dbs, defaultDbId) && defaultDbId != "-1" {
+		if !defaultDbExists(dbs, defaultDbId) && defaultDbId != settings.NoDefaultDatabaseId {
 			log.Fatalf("Database which is set as default (%s) was not found in your workspace or the access is not granted.", defaultDbId)
 		}
 
