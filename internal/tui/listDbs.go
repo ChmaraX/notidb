@@ -25,6 +25,7 @@ var (
 
 type item struct {
 	id, title string
+	def       bool
 }
 
 var showIds bool
@@ -43,6 +44,10 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	}
 
 	str := fmt.Sprintf("%d. %s", index+1, i.title)
+
+	if i.def {
+		str = fmt.Sprintf("%d. %s [default]", index+1, i.title)
+	}
 
 	if showIds {
 		str = fmt.Sprintf("%d. %s (%s)", index+1, i.title, i.id)
@@ -113,10 +118,10 @@ func (m model) View() string {
 	return "\n" + m.list.View()
 }
 
-func GetDbsListTUI(dbs []internal.NotionDb) {
+func GetDbsListTUI(dbs []internal.NotionDb, defaultDbId string) {
 	items := make([]list.Item, len(dbs))
 	for i, db := range dbs {
-		items[i] = item{title: db.Title, id: db.Id}
+		items[i] = item{title: db.Title, id: db.Id, def: db.Id == defaultDbId}
 	}
 
 	const defaultWidth = 20

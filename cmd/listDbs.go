@@ -1,14 +1,23 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
+	"log"
 
 	"github.com/ChmaraX/notidb/internal"
+	"github.com/ChmaraX/notidb/internal/settings"
 	"github.com/ChmaraX/notidb/internal/tui"
-	"github.com/dstotijn/go-notion"
 	"github.com/spf13/cobra"
 )
+
+func defaultDbExists(dbs []internal.NotionDb, defaultDbId string) bool {
+	for _, db := range dbs {
+		if db.Id == defaultDbId {
+			return true
+		}
+	}
+	return false
+}
 
 var listDbsCmd = &cobra.Command{
 	Use:     "list-dbs",
@@ -17,33 +26,22 @@ var listDbsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("list-databases called")
 
-		res, err := internal.NotionClient.Search(
-			context.TODO(),
-			&notion.SearchOpts{
-				Filter: &notion.SearchFilter{
-					Value:    "database",
-					Property: "object",
-				},
-			},
-		)
+		dbs := internal.GetAllNotionDbs()
+		defaultDbId, err := settings.GetDefaultDatabase()
+
 		if err != nil {
-			panic(err)
+			log.Fatalf("Error getting default database: %v", err)
 		}
 
-		dbs := make([]internal.NotionDb, len(res.Results))
-		for i, db := range res.Results {
-			dbs[i].Id = db.(notion.Database).ID
-			dbs[i].Title = db.(notion.Database).Title[0].PlainText // TODO check title length
-			if len(db.(notion.Database).Description) > 0 {
-				dbs[i].Description = db.(notion.Database).Description[0].PlainText
-			} else {
-				dbs[i].Description = ""
-			}
+		if len(dbs) == 0 {
+			log.Fatalf("No databases found in your workspace or the access is not granted.")
 		}
 
-		// TODO: get default database from storage
-		// TODO: check if result contains default (compare by id); if not = error, missing integration on db
+		// check if defaultDbId exists in dbs
+		if !defaultDbExists(dbs, defaultDbId) && defaultDbId != "-1" {
+			log.Fatalf("Database which is set as default (%s) was not found in your workspace or the access is not granted.", defaultDbId)
+		}
 
-		tui.GetDbsListTUI(dbs)
+		tui.GetDbsListTUI(dbs, defaultDbId)
 	},
 }
