@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ChmaraX/notidb/internal"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +31,7 @@ func init() {
 	addEntryCmd.Flags().String("content", "", "Content of the new entry")
 	addEntryCmd.Flags().String("database", "", "ID of the database to add entry to")
 
-	rootCmd.AddCommand(internal.ListDatabasesCmd())
+	rootCmd.AddCommand(listDbsCmd)
 	rootCmd.AddCommand(addEntryCmd)
 	rootCmd.AddCommand(setDefaultCmd)
 	rootCmd.AddCommand(listEntriesCmd)
