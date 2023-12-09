@@ -30,9 +30,9 @@ type item struct {
 	def       bool
 }
 
-var showIds bool
+var showIds = false
 
-func (i item) FilterValue() string { return string(i.title) }
+func (i item) FilterValue() string { return i.title }
 
 type itemDelegate struct{}
 
@@ -68,18 +68,18 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	fmt.Fprint(w, renderFn(builder.String()))
 }
 
-type model struct {
+type DbListModel struct {
 	list        list.Model
 	choice      string
 	quitting    bool
 	defaultDbId string
 }
 
-func (m model) Init() tea.Cmd {
+func (m DbListModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m DbListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.list.SetWidth(msg.Width)
@@ -94,7 +94,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
-				m.choice = string(i.title)
+				m.choice = i.title
 				settings.SetDefaultDatabase(i.id)
 			}
 			return m, tea.Quit
@@ -111,10 +111,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m model) View() string {
+func (m DbListModel) View() string {
 	if m.choice != "" {
 		highlightStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("170"))
-		return quitTextStyle.Render(fmt.Sprintf("%s Default database successfuly set to: %s", checkMark, highlightStyle.Render(m.choice)))
+		return quitTextStyle.Render(fmt.Sprintf("%s Default database successfully set to: %s", checkMark, highlightStyle.Render(m.choice)))
 	}
 	if m.quitting {
 		if m.defaultDbId == settings.NoDefaultDatabaseId {
@@ -123,6 +123,27 @@ func (m model) View() string {
 		return quitTextStyle.Render("No changes made.")
 	}
 	return "\n" + m.list.View()
+}
+
+func InitDbList(dbs []internal.NotionDb, defaultDbId string) *DbListModel {
+	items := make([]list.Item, len(dbs))
+	for i, db := range dbs {
+		items[i] = item{title: db.Title, id: db.Id, def: db.Id == defaultDbId}
+	}
+
+	const defaultWidth = 20
+
+	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
+	l.Title = "Choose default database for operations:"
+	l.SetShowStatusBar(false)
+	l.SetFilteringEnabled(true)
+	l.Styles.Title = titleStyle
+	l.Styles.PaginationStyle = paginationStyle
+	l.Styles.HelpStyle = helpStyle
+
+	m := DbListModel{list: l, defaultDbId: defaultDbId}
+
+	return &m
 }
 
 func GetDbsListTUI(dbs []internal.NotionDb, defaultDbId string) {
@@ -141,7 +162,7 @@ func GetDbsListTUI(dbs []internal.NotionDb, defaultDbId string) {
 	l.Styles.PaginationStyle = paginationStyle
 	l.Styles.HelpStyle = helpStyle
 
-	m := model{list: l, defaultDbId: defaultDbId}
+	m := DbListModel{list: l, defaultDbId: defaultDbId}
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Println("Error running program:", err)
