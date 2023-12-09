@@ -5,10 +5,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var listDbsCmd = &cobra.Command{
-	Use:     "list-dbs",
-	Aliases: []string{"ld", "ls"},
-	Short:   "Lists all available databases",
+var setDefaultDbCmd = &cobra.Command{
+	Use:     "set-db",
+	Aliases: []string{"sd"},
+	Short:   "Set default database",
 	Run: func(cmd *cobra.Command, args []string) {
 		tui.LoadDbs()
 	},
