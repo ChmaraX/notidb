@@ -14,7 +14,7 @@ type NotionDb struct {
 	Id          string
 }
 
-func GetAllNotionDbs() []NotionDb {
+func GetAllNotionDbs() ([]NotionDb, error) {
 	res, err := NotionClient.Search(
 		context.TODO(),
 		&notion.SearchOpts{
@@ -25,7 +25,7 @@ func GetAllNotionDbs() []NotionDb {
 		},
 	)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	dbs := make([]NotionDb, len(res.Results))
@@ -33,7 +33,7 @@ func GetAllNotionDbs() []NotionDb {
 		dbs[i] = parseNotionDb(db.(notion.Database))
 	}
 
-	return dbs
+	return dbs, nil
 }
 
 func parseNotionDb(db notion.Database) NotionDb {
