@@ -63,10 +63,10 @@ func checkAllLoaded(m loadingModel) (tea.Model, tea.Cmd) {
 
 	if !dbExists(dbs, defaultDbId) && defaultDbId != settings.NoDefaultDatabaseId {
 		m.err = fmt.Errorf("database which is set as default (%s) was not found in your workspace or the access is not granted", defaultDbId)
-		return m, nil
+		return m, tea.Quit
 	}
 
-	dbListModel := InitDbList(dbs, defaultDbId)
+	dbListModel := InitDbListModel(dbs, defaultDbId)
 	return dbListModel.Update(nil)
 }
 
@@ -100,19 +100,20 @@ func (m loadingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m loadingModel) View() string {
-	if m.dbs.err != nil {
-		return quitTextStyle.Render(fmt.Sprintf("Error loading databases: %v", m.dbs.err))
-	}
-	if m.defaultDb.err != nil {
-		return quitTextStyle.Render(fmt.Sprintf("Error loading settings (default database): %v", m.defaultDb.err))
-	}
-	if !m.dbs.loaded {
+	switch {
+	case m.dbs.err != nil:
+		return quitTextStyle.Render("Error: " + m.dbs.err.Error())
+	case m.defaultDb.err != nil:
+		return quitTextStyle.Render("Error: " + m.defaultDb.err.Error())
+	case m.err != nil:
+		return quitTextStyle.Render("Error: " + m.err.Error())
+	case !m.dbs.loaded:
 		return m.spinner.View() + " Calling Notion API - loading databases..."
-	}
-	if !m.defaultDb.loaded {
+	case !m.defaultDb.loaded:
 		return m.spinner.View() + " Reading settings..."
+	default:
+		return quitTextStyle.Render("Databases loaded successfully.")
 	}
-	return quitTextStyle.Render("Databases loaded. Press any key to continue.")
 }
 
 func LoadDbs() {
