@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/ChmaraX/notidb/internal"
@@ -14,6 +13,7 @@ import (
 )
 
 const listHeight = 14
+const listWidth = 60
 
 var (
 	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
@@ -125,47 +125,26 @@ func (m DbListModel) View() string {
 	return "\n" + m.list.View()
 }
 
-func InitDbList(dbs []internal.NotionDb, defaultDbId string) *DbListModel {
+func InitDbListModel(dbs []internal.NotionDb, defaultDbId string) *DbListModel {
 	items := make([]list.Item, len(dbs))
 	for i, db := range dbs {
 		items[i] = item{title: db.Title, id: db.Id, def: db.Id == defaultDbId}
 	}
 
-	const defaultWidth = 20
-
-	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
-	l.Title = "Choose default database for operations:"
-	l.SetShowStatusBar(false)
-	l.SetFilteringEnabled(true)
-	l.Styles.Title = titleStyle
-	l.Styles.PaginationStyle = paginationStyle
-	l.Styles.HelpStyle = helpStyle
-
+	l := initListModel(items)
 	m := DbListModel{list: l, defaultDbId: defaultDbId}
 
 	return &m
 }
 
-func GetDbsListTUI(dbs []internal.NotionDb, defaultDbId string) {
-	items := make([]list.Item, len(dbs))
-	for i, db := range dbs {
-		items[i] = item{title: db.Title, id: db.Id, def: db.Id == defaultDbId}
-	}
-
-	const defaultWidth = 20
-
-	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
+func initListModel(items []list.Item) list.Model {
+	l := list.New(items, itemDelegate{}, listWidth, listHeight)
 	l.Title = "Choose default database for operations:"
-	l.SetShowStatusBar(false)
+	l.SetShowStatusBar(true)
 	l.SetFilteringEnabled(true)
 	l.Styles.Title = titleStyle
 	l.Styles.PaginationStyle = paginationStyle
 	l.Styles.HelpStyle = helpStyle
 
-	m := DbListModel{list: l, defaultDbId: defaultDbId}
-
-	if _, err := tea.NewProgram(m).Run(); err != nil {
-		fmt.Println("Error running program:", err)
-		os.Exit(1)
-	}
+	return l
 }
