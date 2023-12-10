@@ -8,6 +8,7 @@ import (
 	"github.com/ChmaraX/notidb/internal/settings"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/jomei/notionapi"
 )
 
 func loadDatabases() tea.Msg {
@@ -30,7 +31,7 @@ func loadDefaultDatabase() tea.Msg {
 }
 
 type dbs struct {
-	list   []internal.NotionDb
+	list   []notionapi.Database
 	err    error
 	loaded bool
 }
@@ -70,9 +71,9 @@ func checkAllLoaded(m loadingModel) (tea.Model, tea.Cmd) {
 	return dbListModel.Update(nil)
 }
 
-func dbExists(dbs []internal.NotionDb, dbId string) bool {
+func dbExists(dbs []notionapi.Database, dbId string) bool {
 	for _, db := range dbs {
-		if db.Id == dbId {
+		if string(db.ID) == dbId {
 			return true
 		}
 	}

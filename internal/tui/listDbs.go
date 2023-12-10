@@ -5,11 +5,11 @@ import (
 	"io"
 	"strings"
 
-	"github.com/ChmaraX/notidb/internal"
 	"github.com/ChmaraX/notidb/internal/settings"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/jomei/notionapi"
 )
 
 const listHeight = 14
@@ -125,10 +125,10 @@ func (m DbListModel) View() string {
 	return "\n" + m.list.View()
 }
 
-func InitDbListModel(dbs []internal.NotionDb, defaultDbId string) *DbListModel {
+func InitDbListModel(dbs []notionapi.Database, defaultDbId string) *DbListModel {
 	items := make([]list.Item, len(dbs))
 	for i, db := range dbs {
-		items[i] = item{title: db.Title, id: db.Id, def: db.Id == defaultDbId}
+		items[i] = item{title: db.Title[0].PlainText, id: string(db.ID), def: string(db.ID) == defaultDbId}
 	}
 
 	l := initListModel(items)

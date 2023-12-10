@@ -3,10 +3,10 @@ package internal
 import (
 	"context"
 
-	"github.com/dstotijn/go-notion"
+	"github.com/jomei/notionapi"
 )
 
-var NotionClient *notion.Client
+var NotionClient *notionapi.Client
 
 type NotionDb struct {
 	Title       string
@@ -14,45 +14,39 @@ type NotionDb struct {
 	Id          string
 }
 
-func GetAllNotionDbs() ([]NotionDb, error) {
-	res, err := NotionClient.Search(
-		context.TODO(),
-		&notion.SearchOpts{
-			Filter: &notion.SearchFilter{
-				Value:    "database",
-				Property: "object",
-			},
+func GetAllNotionDbs() ([]notionapi.Database, error) {
+	res, err := NotionClient.Search.Do(context.Background(), &notionapi.SearchRequest{
+		Filter: notionapi.SearchFilter{
+			Value:    "database",
+			Property: "object",
 		},
-	)
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	dbs := make([]NotionDb, len(res.Results))
-	for i, db := range res.Results {
-		dbs[i] = parseNotionDb(db.(notion.Database))
+	databases := make([]notionapi.Database, len(res.Results))
+	for i, obj := range res.Results {
+		if db, ok := obj.(*notionapi.Database); ok {
+			databases[i] = *db
+		}
 	}
 
-	return dbs, nil
+	return databases, nil
 }
 
-func parseNotionDb(db notion.Database) NotionDb {
-	var parsedDb NotionDb
-	parsedDb.Id = db.ID
-	parsedDb.Title = db.Title[0].PlainText
-	if len(db.Description) > 0 {
-		parsedDb.Description = db.Description[0].PlainText
-	} else {
-		parsedDb.Description = ""
+func GetDatabaseSchema(dbId string) (notionapi.PropertyConfigs, error) {
+	db, err := NotionClient.Database.Get(context.Background(), notionapi.DatabaseID(dbId))
+	if err != nil {
+		return nil, err
 	}
-	return parsedDb
+	return db.Properties, nil
 }
 
-// connect to notion
 func CreateNotionClient() {
 	c, err := LoadConfig()
 	if err != nil {
 		panic(err)
 	}
-	NotionClient = notion.NewClient(c.ApiKey)
+	NotionClient = notionapi.NewClient(notionapi.Token(c.ApiKey))
 }
