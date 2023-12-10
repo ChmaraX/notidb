@@ -10,9 +10,9 @@ import (
 )
 
 type databaseEntry struct {
-	title string
-	body  string
-	dbId  string
+	title   string
+	content string
+	dbId    string
 }
 
 func (e *databaseEntry) validateDefaultDb() error {
@@ -26,7 +26,7 @@ func (e *databaseEntry) validateDefaultDb() error {
 	return nil
 }
 
-func createBodyBlock(body string) notionapi.Block {
+func createContentBlock(content string) notionapi.Block {
 	return notionapi.ParagraphBlock{
 		BasicBlock: notionapi.BasicBlock{
 			Object: "block",
@@ -37,7 +37,7 @@ func createBodyBlock(body string) notionapi.Block {
 				{
 					Type: "text",
 					Text: &notionapi.Text{
-						Content: body,
+						Content: content,
 					},
 				},
 			},
@@ -67,8 +67,8 @@ func addEntry(e databaseEntry) (notionapi.Page, error) {
 		props = createTitleProperty(e.title)
 	}
 
-	if e.body != "" {
-		blocks = append(blocks, createBodyBlock(e.body))
+	if e.content != "" {
+		blocks = append(blocks, createContentBlock(e.content))
 	}
 
 	res, err := internal.AddDatabaseEntry(e.dbId, props, blocks)
@@ -95,7 +95,7 @@ var addEntryCmd = &cobra.Command{
 			return
 		}
 
-		if entry.title == "" && entry.body == "" {
+		if entry.title == "" && entry.content == "" {
 			fmt.Printf("Schema: %+v\n", schema)
 			// TODO: open form
 			return
@@ -115,6 +115,6 @@ var entry databaseEntry
 
 func init() {
 	addEntryCmd.Flags().StringVarP(&entry.title, "title", "t", "", "Title of the new entry")
-	addEntryCmd.Flags().StringVarP(&entry.body, "body", "b", "", "Body of the new entry")
+	addEntryCmd.Flags().StringVarP(&entry.content, "content", "c", "", "Content of the new entry")
 	addEntryCmd.Flags().StringVarP(&entry.dbId, "database", "d", "", "ID of the database to add entry to")
 }
