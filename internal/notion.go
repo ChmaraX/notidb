@@ -43,6 +43,20 @@ func GetDatabaseSchema(dbId string) (notionapi.PropertyConfigs, error) {
 	return db.Properties, nil
 }
 
+func AddDatabaseEntry(dbId string, properties notionapi.Properties) (notionapi.Page, error) {
+	page, err := NotionClient.Page.Create(context.Background(), &notionapi.PageCreateRequest{
+		Parent: notionapi.Parent{
+			Type:       "database_id",
+			DatabaseID: notionapi.DatabaseID(dbId),
+		},
+		Properties: properties,
+	})
+	if err != nil {
+		return notionapi.Page{}, err
+	}
+	return *page, nil
+}
+
 func CreateNotionClient() {
 	c, err := LoadConfig()
 	if err != nil {

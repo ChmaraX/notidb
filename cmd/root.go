@@ -10,7 +10,7 @@ import (
 const (
 	usage   = `notidb`
 	example = `  notidb sd
-  notidb a --title "Meeting Notes" --content "Notes from the team meeting on 3rd Dec"
+  notidb a --title "Meeting Notes" --body "Notes from the team meeting on 3rd Dec"
   notidb le --database 1234567890abcdef`
 )
 
@@ -23,10 +23,6 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	addEntryCmd.Flags().String("title", "", "Title of the new entry")
-	addEntryCmd.Flags().String("content", "", "Content of the new entry")
-	addEntryCmd.Flags().String("database", "", "ID of the database to add entry to")
-
 	rootCmd.AddCommand(setDefaultDbCmd)
 	rootCmd.AddCommand(addEntryCmd)
 
