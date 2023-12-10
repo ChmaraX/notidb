@@ -8,12 +8,6 @@ import (
 
 var NotionClient *notionapi.Client
 
-type NotionDb struct {
-	Title       string
-	Description string
-	Id          string
-}
-
 func GetAllNotionDbs() ([]notionapi.Database, error) {
 	res, err := NotionClient.Search.Do(context.Background(), &notionapi.SearchRequest{
 		Filter: notionapi.SearchFilter{
@@ -43,13 +37,14 @@ func GetDatabaseSchema(dbId string) (notionapi.PropertyConfigs, error) {
 	return db.Properties, nil
 }
 
-func AddDatabaseEntry(dbId string, properties notionapi.Properties) (notionapi.Page, error) {
+func AddDatabaseEntry(dbId string, properties notionapi.Properties, children []notionapi.Block) (notionapi.Page, error) {
 	page, err := NotionClient.Page.Create(context.Background(), &notionapi.PageCreateRequest{
 		Parent: notionapi.Parent{
 			Type:       "database_id",
 			DatabaseID: notionapi.DatabaseID(dbId),
 		},
 		Properties: properties,
+		Children:   children,
 	})
 	if err != nil {
 		return notionapi.Page{}, err

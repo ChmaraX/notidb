@@ -9,45 +9,74 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type addEntryArgs struct {
+type databaseEntry struct {
 	title string
 	body  string
 	dbId  string
 }
 
-func (c *addEntryArgs) validateDefaultDb() error {
-	if c.dbId == "" {
+func (e *databaseEntry) validateDefaultDb() error {
+	if e.dbId == "" {
 		dbId, err := settings.GetDefaultDatabase()
 		if err != nil {
 			return err
 		}
-		c.dbId = dbId
+		e.dbId = dbId
 	}
 	return nil
 }
 
-func addEntry(c addEntryArgs, schema notionapi.PropertyConfigs) (notionapi.Page, error) {
-	if c.title != "" {
-		props := notionapi.Properties{}
-		// "title" is alias for any property that is of type "title" (unique per database)
-		props["title"] = notionapi.TitleProperty{Title: []notionapi.RichText{
+func createBodyBlock(body string) notionapi.Block {
+	return notionapi.ParagraphBlock{
+		BasicBlock: notionapi.BasicBlock{
+			Object: "block",
+			Type:   "paragraph",
+		},
+		Paragraph: notionapi.Paragraph{
+			RichText: []notionapi.RichText{
+				{
+					Type: "text",
+					Text: &notionapi.Text{
+						Content: body,
+					},
+				},
+			},
+		},
+	}
+}
+
+func createTitleProperty(title string) notionapi.Properties {
+	return notionapi.Properties{
+		// "title" is alias for any property of type "title" (unique per database)
+		"title": notionapi.TitleProperty{Title: []notionapi.RichText{
 			{
 				Type: "text",
 				Text: &notionapi.Text{
-					Content: c.title,
+					Content: title,
 				},
 			},
-		}}
-		res, err := internal.AddDatabaseEntry(c.dbId, props)
-		if err != nil {
-			return notionapi.Page{}, err
-		}
-		fmt.Printf("Added entry: %+v\n", res)
-		return res, nil
+		}},
+	}
+}
+
+func addEntry(e databaseEntry) (notionapi.Page, error) {
+	props := notionapi.Properties{}
+	blocks := []notionapi.Block{}
+
+	if e.title != "" {
+		props = createTitleProperty(e.title)
 	}
 
-	// TODO: add body as block
-	return notionapi.Page{}, nil
+	if e.body != "" {
+		blocks = append(blocks, createBodyBlock(e.body))
+	}
+
+	res, err := internal.AddDatabaseEntry(e.dbId, props, blocks)
+	if err != nil {
+		return notionapi.Page{}, err
+	}
+
+	return res, nil
 }
 
 var addEntryCmd = &cobra.Command{
@@ -55,38 +84,37 @@ var addEntryCmd = &cobra.Command{
 	Aliases: []string{"a"},
 	Short:   "Adds a new entry to a database",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := config.validateDefaultDb(); err != nil {
+		if err := entry.validateDefaultDb(); err != nil {
 			fmt.Printf("Error: %v\n", err)
 			return
 		}
 
-		schema, err := internal.GetDatabaseSchema(config.dbId)
+		schema, err := internal.GetDatabaseSchema(entry.dbId)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			return
 		}
 
-		if config.title == "" && config.body == "" {
-
+		if entry.title == "" && entry.body == "" {
 			fmt.Printf("Schema: %+v\n", schema)
 			// TODO: open form
 			return
 		}
 
-		// add entry to db
-		addEntry(config, schema)
+		page, err := addEntry(entry)
+		if err != nil {
+			fmt.Printf("Error adding entry: %v\n", err)
+			return
+		}
 
-		// -d flag (optional) - database id; if not provided, the default database is used
-		// -t flag (optional) - title of the entry
-		// -b flag (optional) - body of the entry
-		// no flag, open form to fill in the entry to the default database
+		fmt.Printf("Added entry: %+v\n", page)
 	},
 }
 
-var config addEntryArgs
+var entry databaseEntry
 
 func init() {
-	addEntryCmd.Flags().StringVarP(&config.title, "title", "t", "", "Title of the new entry")
-	addEntryCmd.Flags().StringVarP(&config.body, "body", "b", "", "Body of the new entry")
-	addEntryCmd.Flags().StringVarP(&config.dbId, "database", "d", "", "ID of the database to add entry to")
+	addEntryCmd.Flags().StringVarP(&entry.title, "title", "t", "", "Title of the new entry")
+	addEntryCmd.Flags().StringVarP(&entry.body, "body", "b", "", "Body of the new entry")
+	addEntryCmd.Flags().StringVarP(&entry.dbId, "database", "d", "", "ID of the database to add entry to")
 }
