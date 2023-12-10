@@ -73,7 +73,7 @@ func addEntry(e databaseEntry) (notionapi.Page, error) {
 
 	res, err := internal.AddDatabaseEntry(e.dbId, props, blocks)
 	if err != nil {
-		return notionapi.Page{}, err
+		return notionapi.Page{}, fmt.Errorf("failed to add database entry: %w", err)
 	}
 
 	return res, nil
@@ -89,13 +89,13 @@ var addEntryCmd = &cobra.Command{
 			return
 		}
 
-		schema, err := internal.GetDatabaseSchema(entry.dbId)
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			return
-		}
-
 		if entry.title == "" && entry.content == "" {
+			schema, err := internal.GetDatabaseSchema(entry.dbId)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return
+			}
+
 			fmt.Printf("Schema: %+v\n", schema)
 			// TODO: open form
 			return
@@ -107,7 +107,7 @@ var addEntryCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Printf("Added entry: %+v\n", page)
+		fmt.Printf("Entry successfully added: %s\n", page.URL)
 	},
 }
 
