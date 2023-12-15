@@ -8,6 +8,41 @@ import (
 
 var NotionClient *notionapi.Client
 
+var NotionPagePropTypes = []string{
+	"rich_text",
+	"number",
+	"select",
+	"multi_select",
+	"date",
+	"people",
+	"file",
+	"checkbox",
+	"url",
+	"email",
+	"phone_number",
+	"formula",
+	"relation",
+	"rollup",
+	"created_time",
+	"created_by",
+	"last_edited_time",
+	"last_edited_by",
+}
+
+func GetSupportedPagePropTypes() []string {
+	return []string{
+		"rich_text",
+		"number",
+		"select",
+		"multi_select",
+		"date",
+		"checkbox",
+		"url",
+		"email",
+		"phone_number",
+	}
+}
+
 func GetAllNotionDbs() ([]notionapi.Database, error) {
 	res, err := NotionClient.Search.Do(context.Background(), &notionapi.SearchRequest{
 		Filter: notionapi.SearchFilter{

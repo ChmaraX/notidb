@@ -5,6 +5,8 @@ import (
 
 	"github.com/ChmaraX/notidb/internal"
 	"github.com/ChmaraX/notidb/internal/settings"
+	"github.com/ChmaraX/notidb/internal/tui"
+	"github.com/ChmaraX/notidb/internal/utils"
 	"github.com/jomei/notionapi"
 	"github.com/spf13/cobra"
 )
@@ -79,6 +81,17 @@ func addEntry(e databaseEntry) (notionapi.Page, error) {
 	return res, nil
 }
 
+func filterSupportedProps(schema notionapi.PropertyConfigs) notionapi.PropertyConfigs {
+	supportedPropTypes := internal.GetSupportedPagePropTypes()
+	filteredSchema := make(notionapi.PropertyConfigs)
+	for key, value := range schema {
+		if utils.Contains(supportedPropTypes, string(value.GetType())) {
+			filteredSchema[key] = value
+		}
+	}
+	return filteredSchema
+}
+
 var addEntryCmd = &cobra.Command{
 	Use:     "add",
 	Aliases: []string{"a"},
@@ -97,7 +110,12 @@ var addEntryCmd = &cobra.Command{
 			}
 
 			fmt.Printf("Schema: %+v\n", schema)
+
+			// create list of properties from schema in format "property name: property type"
+			schema = filterSupportedProps(schema)
+			fmt.Printf("Subset: %+v\n", schema)
 			// TODO: open form
+			tui.InitForm(schema)
 			return
 		}
 
