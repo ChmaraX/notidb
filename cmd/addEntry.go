@@ -16,6 +16,8 @@ type cmdArgs struct {
 	dbId    string
 }
 
+const DefaultTitlePropKey = "title"
+
 func (a *cmdArgs) validateDefaultDb() error {
 	if a.dbId == "" {
 		dbId, err := settings.GetDefaultDatabase()
@@ -34,7 +36,7 @@ func createEntryFromArgs(a cmdArgs) internal.DatabaseEntry {
 	}
 
 	if a.title != "" {
-		entry.Props["title"] = internal.CreateTitleProperty(a.title)
+		entry.Props[DefaultTitlePropKey] = internal.CreateTitleProperty(a.title)
 	}
 
 	if a.content != "" {
@@ -51,7 +53,7 @@ func createEmptyEntry(dbId string) internal.DatabaseEntry {
 	}
 	schema = filterSupportedProps(schema)
 	props := internal.ConvertPropertyConfigsToProps(schema)
-	props["title"] = internal.CreateTitleProperty("")
+	props[DefaultTitlePropKey] = internal.CreateTitleProperty("")
 	blocks := []notionapi.Block{internal.CreateContentBlock("")}
 
 	return internal.DatabaseEntry{
@@ -85,6 +87,7 @@ var addEntryCmd = &cobra.Command{
 	Aliases: []string{"a"},
 	Short:   "Adds a new entry to a database",
 	Run: func(cmd *cobra.Command, arguments []string) {
+		fmt.Printf("Arguments: %+v\n", arguments)
 		if err := args.validateDefaultDb(); err != nil {
 			fmt.Printf("Error: %v\n", err)
 			return
