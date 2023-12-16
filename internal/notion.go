@@ -2,6 +2,8 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/jomei/notionapi"
 )
@@ -37,9 +39,55 @@ func GetSupportedPagePropTypes() []string {
 		"multi_select",
 		"date",
 		"checkbox",
-		"url",
 		"email",
 		"phone_number",
+	}
+}
+
+// no better way to convert PropertyConfigs to Properties atm
+func ConvertPropertyConfigsToProps(schema notionapi.PropertyConfigs) notionapi.Properties {
+	schemaJson, err := json.Marshal(schema)
+	if err != nil {
+		fmt.Printf("failed to marshal schema to JSON: %v", err)
+	}
+
+	var props notionapi.Properties
+	err = json.Unmarshal(schemaJson, &props)
+	if err != nil {
+		fmt.Printf("failed to unmarshal JSON to Properties: %v", err)
+	}
+
+	return props
+}
+
+func CreateContentBlock(content string) notionapi.Block {
+	return notionapi.ParagraphBlock{
+		BasicBlock: notionapi.BasicBlock{
+			Object: "block",
+			Type:   "paragraph",
+		},
+		Paragraph: notionapi.Paragraph{
+			RichText: []notionapi.RichText{
+				{
+					Type: "text",
+					Text: &notionapi.Text{
+						Content: content,
+					},
+				},
+			},
+		},
+	}
+}
+
+func CreateTitleProperty(title string) notionapi.TitleProperty {
+	return notionapi.TitleProperty{Title: []notionapi.RichText{
+		{
+			Type: "text",
+			Text: &notionapi.Text{
+				Content: title,
+			},
+		},
+	},
 	}
 }
 
@@ -72,14 +120,19 @@ func GetDatabaseSchema(dbId string) (notionapi.PropertyConfigs, error) {
 	return db.Properties, nil
 }
 
-func AddDatabaseEntry(dbId string, properties notionapi.Properties, children []notionapi.Block) (notionapi.Page, error) {
+type DatabaseEntry struct {
+	Props  notionapi.Properties
+	Blocks []notionapi.Block
+}
+
+func AddDatabaseEntry(dbId string, entry DatabaseEntry) (notionapi.Page, error) {
 	page, err := NotionClient.Page.Create(context.Background(), &notionapi.PageCreateRequest{
 		Parent: notionapi.Parent{
 			Type:       "database_id",
 			DatabaseID: notionapi.DatabaseID(dbId),
 		},
-		Properties: properties,
-		Children:   children,
+		Properties: entry.Props,
+		Children:   entry.Blocks,
 	})
 	if err != nil {
 		return notionapi.Page{}, err
