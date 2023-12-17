@@ -5,7 +5,7 @@ import (
 
 	"github.com/ChmaraX/notidb/internal"
 	"github.com/ChmaraX/notidb/internal/settings"
-	"github.com/ChmaraX/notidb/internal/utils"
+	"github.com/ChmaraX/notidb/internal/tui"
 	"github.com/jomei/notionapi"
 	"github.com/spf13/cobra"
 )
@@ -16,7 +16,7 @@ type cmdArgs struct {
 	dbId    string
 }
 
-const DefaultTitlePropKey = "title"
+const DefaultTitlePropKey = "Title"
 
 func (a *cmdArgs) validateDefaultDb() error {
 	if a.dbId == "" {
@@ -46,22 +46,6 @@ func createEntryFromArgs(a cmdArgs) internal.DatabaseEntry {
 	return entry
 }
 
-func createEmptyEntry(dbId string) internal.DatabaseEntry {
-	schema, err := internal.GetDatabaseSchema(dbId)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-	}
-	schema = filterSupportedProps(schema)
-	props := internal.ConvertPropertyConfigsToProps(schema)
-	props[DefaultTitlePropKey] = internal.CreateTitleProperty("")
-	blocks := []notionapi.Block{internal.CreateContentBlock("")}
-
-	return internal.DatabaseEntry{
-		Props:  props,
-		Blocks: blocks,
-	}
-}
-
 func addEntry(dbId string, entry internal.DatabaseEntry) (notionapi.Page, error) {
 	res, err := internal.AddDatabaseEntry(dbId, entry)
 	if err != nil {
@@ -71,23 +55,11 @@ func addEntry(dbId string, entry internal.DatabaseEntry) (notionapi.Page, error)
 	return res, nil
 }
 
-func filterSupportedProps(schema notionapi.PropertyConfigs) notionapi.PropertyConfigs {
-	supportedPropTypes := internal.GetSupportedPagePropTypes()
-	filteredSchema := make(notionapi.PropertyConfigs)
-	for key, value := range schema {
-		if utils.Contains(supportedPropTypes, string(value.GetType())) {
-			filteredSchema[key] = value
-		}
-	}
-	return filteredSchema
-}
-
 var addEntryCmd = &cobra.Command{
 	Use:     "add",
 	Aliases: []string{"a"},
 	Short:   "Adds a new entry to a database",
 	Run: func(cmd *cobra.Command, arguments []string) {
-		fmt.Printf("Arguments: %+v\n", arguments)
 		if err := args.validateDefaultDb(); err != nil {
 			fmt.Printf("Error: %v\n", err)
 			return
@@ -95,11 +67,7 @@ var addEntryCmd = &cobra.Command{
 		dbId, title, content := args.dbId, args.title, args.content
 
 		if title == "" && content == "" {
-
-			entryForm := createEmptyEntry(dbId)
-			fmt.Printf("%+v\n", entryForm)
-			// TODO: open form
-			// tui.InitForm(schema)
+			tui.InitForm(dbId)
 			return
 		}
 

@@ -2,62 +2,24 @@ package internal
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
 	"github.com/jomei/notionapi"
 )
 
 var NotionClient *notionapi.Client
 
-var NotionPagePropTypes = []string{
-	"rich_text",
-	"number",
-	"select",
-	"multi_select",
-	"date",
-	"people",
-	"file",
-	"checkbox",
-	"url",
-	"email",
-	"phone_number",
-	"formula",
-	"relation",
-	"rollup",
-	"created_time",
-	"created_by",
-	"last_edited_time",
-	"last_edited_by",
-}
-
-func GetSupportedPagePropTypes() []string {
-	return []string{
-		"rich_text",
-		"number",
-		"select",
-		"multi_select",
-		"date",
-		"checkbox",
-		"email",
-		"phone_number",
+func GetSupportedPropTypes() []notionapi.PropertyType {
+	return []notionapi.PropertyType{
+		notionapi.PropertyTypeTitle,
+		notionapi.PropertyTypeRichText,
+		notionapi.PropertyTypeNumber,
+		notionapi.PropertyTypeSelect,
+		notionapi.PropertyTypeMultiSelect,
+		notionapi.PropertyTypeDate,
+		notionapi.PropertyTypeCheckbox,
+		notionapi.PropertyTypeEmail,
+		notionapi.PropertyTypePhoneNumber,
 	}
-}
-
-// no better way to convert PropertyConfigs to Properties atm
-func ConvertPropertyConfigsToProps(schema notionapi.PropertyConfigs) notionapi.Properties {
-	schemaJson, err := json.Marshal(schema)
-	if err != nil {
-		fmt.Printf("failed to marshal schema to JSON: %v", err)
-	}
-
-	var props notionapi.Properties
-	err = json.Unmarshal(schemaJson, &props)
-	if err != nil {
-		fmt.Printf("failed to unmarshal JSON to Properties: %v", err)
-	}
-
-	return props
 }
 
 func CreateContentBlock(content string) notionapi.Block {

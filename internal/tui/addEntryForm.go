@@ -7,15 +7,15 @@ import (
 	"strings"
 
 	"github.com/ChmaraX/notidb/internal"
-	"github.com/ChmaraX/notidb/internal/utils"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jomei/notionapi"
 )
 
-func InitForm(schema notionapi.PropertyConfigs) {
-	p := tea.NewProgram(initialModel(schema))
+func InitForm(dbId string) {
+	entryForm := createEntryInputForm(dbId)
+	p := tea.NewProgram(initialModel(entryForm))
 
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
@@ -43,6 +43,45 @@ type model struct {
 	bottomText string
 }
 
+type EntryInputForm struct {
+	Props   map[string]notionapi.PropertyType
+	Content string
+}
+
+func createEntryInputForm(dbId string) EntryInputForm {
+	schema, err := internal.GetDatabaseSchema(dbId)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
+	props := filterSupportedProps(schema)
+
+	return EntryInputForm{
+		Props:   props,
+		Content: "",
+	}
+}
+
+// filter props supported by the TUI form
+func filterSupportedProps(schema notionapi.PropertyConfigs) map[string]notionapi.PropertyType {
+	supportedPropTypes := internal.GetSupportedPropTypes()
+
+	// Convert slice to map for faster lookup
+	supportedPropTypesMap := make(map[string]bool)
+	for _, propType := range supportedPropTypes {
+		supportedPropTypesMap[string(propType)] = true
+	}
+
+	props := make(map[string]notionapi.PropertyType)
+	for key, prop := range schema {
+		// Use map lookup instead of slice contains
+		if _, ok := supportedPropTypesMap[string(prop.GetType())]; ok {
+			props[key] = notionapi.PropertyType(prop.GetType())
+		}
+	}
+
+	return props
+}
+
 func expValidator(s string) error {
 	// The 3 character should be a slash (/)
 	// The rest should be numbers
@@ -60,43 +99,34 @@ func expValidator(s string) error {
 	return nil
 }
 
-func cvvValidator(s string) error {
-	// The CVV should be a number of 3 digits
-	// Since the input will already ensure that the CVV is a string of length 3,
-	// All we need to do is check that it is a number
-	_, err := strconv.ParseInt(s, 10, 64)
-	return err
-}
+func initialModel(entryForm EntryInputForm) model {
+	var inputs []textinput.Model = make([]textinput.Model, len(entryForm.Props))
 
-func initialModel(schema notionapi.PropertyConfigs) model {
-	var inputs []textinput.Model = make([]textinput.Model, len(schema))
-	supportedPropTypes := internal.GetSupportedPagePropTypes()
-
-	// TODO: append Title and Content to the schema
 	// TODO: body = textfield/editor
 	// TOOD: shift+enter submit?
 
-	// iterate over schema and create inputs, but only for supported types
-	idx := 0
-	for title, prop := range schema {
-		if utils.Contains(supportedPropTypes, string(prop.GetType())) {
-			switch prop.GetType() {
-			case
-				notionapi.PropertyConfigTypeRichText,
-				notionapi.PropertyConfigTypeNumber, // TOOD: number validator
-				notionapi.PropertyConfigTypeSelect,
-				notionapi.PropertyConfigTypeMultiSelect,
-				notionapi.PropertyConfigTypeDate, // TODO: date validator
-				notionapi.PropertyConfigTypeCheckbox,
-				notionapi.PropertyConfigTypeURL, // TODO: url validator
-				notionapi.PropertyConfigTypeEmail,
-				notionapi.PropertyConfigTypePhoneNumber: // TODO: phone number validator
-				inputs[idx] = textinput.New()
-				inputs[idx].Placeholder = title
-			default:
-				fmt.Printf("unsupported property type: %s", prop.GetType())
-			}
+	idx := 1
+	for title, prop := range entryForm.Props {
+		switch prop {
+		case
+			notionapi.PropertyTypeTitle:
+			inputs[0] = textinput.New()
+			inputs[0].Placeholder = title
+			inputs[0].Focus()
+		case
+			notionapi.PropertyTypeRichText,
+			notionapi.PropertyTypeNumber, // TOOD: number validator
+			notionapi.PropertyTypeSelect,
+			notionapi.PropertyTypeMultiSelect,
+			notionapi.PropertyTypeDate, // TODO: date validator
+			notionapi.PropertyTypeCheckbox,
+			notionapi.PropertyTypeEmail,
+			notionapi.PropertyTypePhoneNumber: // TODO: phone number validator
+			inputs[idx] = textinput.New()
+			inputs[idx].Placeholder = title
 			idx++
+		default:
+			fmt.Printf("unsupported property type: %s", prop)
 		}
 	}
 
