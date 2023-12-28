@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/ChmaraX/notidb/internal"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -33,8 +35,7 @@ const (
 )
 
 var (
-	inputStyle      = lipgloss.NewStyle().Foreground(hotPink).MarginLeft(2)
-	bottomTextStyle = lipgloss.NewStyle().Foreground(darkGray)
+	inputStyle = lipgloss.NewStyle().Foreground(hotPink).MarginLeft(2)
 )
 
 type model struct {
@@ -42,6 +43,15 @@ type model struct {
 	focused    int
 	err        error
 	bottomText string
+	help       help.Model
+	keymap     keymap
+}
+
+type keymap struct {
+	submit key.Binding
+	next   key.Binding
+	prev   key.Binding
+	quit   key.Binding
 }
 
 type EntryInputForm struct {
@@ -103,8 +113,6 @@ func expValidator(s string) error {
 func initialModel(entryForm EntryInputForm) model {
 	elements := make([]interface{}, len(entryForm.Props)+1)
 
-	// TOOD: shift+enter submit?
-
 	titleIdx := 0 // always first
 	idx := 1
 	for title, prop := range entryForm.Props {
@@ -143,11 +151,42 @@ func initialModel(entryForm EntryInputForm) model {
 	elements[len(elements)-1] = ta
 
 	return model{
-		elements:   elements,
-		focused:    0,
-		err:        nil,
-		bottomText: "Continue ->",
+		elements: elements,
+		focused:  0,
+		err:      nil,
+		keymap:   getHelpKeyMap(),
+		help:     help.New(),
 	}
+}
+
+func getHelpKeyMap() keymap {
+	return keymap{
+		submit: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("<enter>", "submit"),
+		),
+		next: key.NewBinding(
+			key.WithKeys("tab", "ctrl+n"),
+			key.WithHelp("<tab>", "next"),
+		),
+		prev: key.NewBinding(
+			key.WithKeys("shift+tab", "ctrl+p"),
+			key.WithHelp("<shift+tab>", "previous"),
+		),
+		quit: key.NewBinding(
+			key.WithKeys("ctrl+c"),
+			key.WithHelp("<ctrl+c>", "quit"),
+		),
+	}
+}
+
+func (m model) helpView() string {
+	return m.help.ShortHelpView([]key.Binding{
+		m.keymap.submit,
+		m.keymap.next,
+		m.keymap.prev,
+		m.keymap.quit,
+	})
 }
 
 func (m model) Init() tea.Cmd {
@@ -161,18 +200,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
-			if m.focused == len(m.elements)-1 {
-				return m, tea.Quit
-			}
-			m.nextInput()
-		case tea.KeyCtrlC, tea.KeyEsc:
+			return m, tea.Quit
+		case tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyShiftTab, tea.KeyCtrlP:
 			m.prevInput()
-			m.updateBottomText()
 		case tea.KeyTab, tea.KeyCtrlN:
 			m.nextInput()
-			m.updateBottomText()
 		}
 
 	case errMsg:
@@ -189,9 +223,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.elements[i], cmds[i] = elem.Update(msg)
 		}
 	}
-	var cmd tea.Cmd
 
-	return m, tea.Batch(append(cmds, cmd)...)
+	return m, tea.Batch(cmds...)
 }
 
 func (m model) View() string {
@@ -209,10 +242,9 @@ func (m model) View() string {
 	}
 
 	return fmt.Sprintf(
-		"\n%s\n\n%s\n%s\n",
-		bottomTextStyle.Width(30).Bold(true).Render("Add new entry to database:"),
-		inputsView.String(), // Convert inputsView to string
-		bottomTextStyle.Render(m.bottomText),
+		"\n%s\n%s\n",
+		inputsView.String(),
+		m.helpView(),
 	) + "\n"
 }
 
@@ -245,13 +277,5 @@ func (m *model) focusCurrentElement() {
 	} else if elem, ok := m.elements[m.focused].(textarea.Model); ok {
 		elem.Focus()
 		m.elements[m.focused] = elem
-	}
-}
-
-func (m *model) updateBottomText() {
-	if m.focused == len(m.elements)-1 {
-		m.bottomText = "Press Enter to Submit"
-	} else {
-		m.bottomText = "Continue ->"
 	}
 }
