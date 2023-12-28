@@ -39,19 +39,18 @@ var (
 )
 
 type model struct {
-	elements   []interface{} // common array for all inputs
-	focused    int
-	err        error
-	bottomText string
-	help       help.Model
-	keymap     keymap
+	elements []interface{} // common array for all inputs
+	focused  int
+	err      error
+	help     help.Model
+	keymap   keymap
 }
 
 type keymap struct {
-	submit key.Binding
-	next   key.Binding
-	prev   key.Binding
-	quit   key.Binding
+	save key.Binding
+	next key.Binding
+	prev key.Binding
+	quit key.Binding
 }
 
 type EntryInputForm struct {
@@ -143,6 +142,7 @@ func initialModel(entryForm EntryInputForm) model {
 		}
 	}
 
+	// textarea
 	ta := textarea.New()
 	ta.Placeholder = "Start writing..."
 	ta.SetWidth(50)
@@ -150,20 +150,24 @@ func initialModel(entryForm EntryInputForm) model {
 
 	elements[len(elements)-1] = ta
 
+	// help styles
+	help := help.New()
+	help.Styles.ShortKey = lipgloss.NewStyle().Foreground(darkGray)
+
 	return model{
 		elements: elements,
 		focused:  0,
 		err:      nil,
 		keymap:   getHelpKeyMap(),
-		help:     help.New(),
+		help:     help,
 	}
 }
 
 func getHelpKeyMap() keymap {
 	return keymap{
-		submit: key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("<enter>", "submit"),
+		save: key.NewBinding(
+			key.WithKeys("ctrl+s"),
+			key.WithHelp("<ctrl+s>", "save"),
 		),
 		next: key.NewBinding(
 			key.WithKeys("tab", "ctrl+n"),
@@ -182,7 +186,7 @@ func getHelpKeyMap() keymap {
 
 func (m model) helpView() string {
 	return m.help.ShortHelpView([]key.Binding{
-		m.keymap.submit,
+		m.keymap.save,
 		m.keymap.next,
 		m.keymap.prev,
 		m.keymap.quit,
@@ -199,7 +203,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyEnter:
+		case tea.KeyCtrlS:
 			return m, tea.Quit
 		case tea.KeyCtrlC:
 			return m, tea.Quit
@@ -230,14 +234,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	var inputsView strings.Builder
 
-	for i, elem := range m.elements {
+	for _, elem := range m.elements {
 		switch elem := elem.(type) {
 		case textinput.Model:
 			inputsView.WriteString(fmt.Sprintf("%s\n%s\n", inputStyle.Width(30).Render(elem.Placeholder), elem.View()))
 		case textarea.Model:
-			if i == len(m.elements)-1 { // TextArea is the last element
-				inputsView.WriteString(fmt.Sprintf("\n%s\n%s\n", inputStyle.Width(30).Render("Content"), elem.View()))
-			}
+			inputsView.WriteString(fmt.Sprintf("\n%s\n%s\n", inputStyle.Width(30).Render("Content"), elem.View()))
 		}
 	}
 
