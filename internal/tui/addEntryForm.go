@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ChmaraX/notidb/internal"
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -37,7 +38,7 @@ var (
 )
 
 type model struct {
-	inputs     []textinput.Model
+	elements   []interface{} // common array for all inputs
 	focused    int
 	err        error
 	bottomText string
@@ -100,19 +101,20 @@ func expValidator(s string) error {
 }
 
 func initialModel(entryForm EntryInputForm) model {
-	var inputs []textinput.Model = make([]textinput.Model, len(entryForm.Props))
+	elements := make([]interface{}, len(entryForm.Props)+1)
 
-	// TODO: body = textfield/editor
 	// TOOD: shift+enter submit?
 
+	titleIdx := 0 // always first
 	idx := 1
 	for title, prop := range entryForm.Props {
 		switch prop {
-		case
-			notionapi.PropertyTypeTitle:
-			inputs[0] = textinput.New()
-			inputs[0].Placeholder = title
-			inputs[0].Focus()
+		case notionapi.PropertyTypeTitle:
+			ti := textinput.New()
+			ti.Placeholder = title
+			ti.Focus()
+
+			elements[titleIdx] = ti
 		case
 			notionapi.PropertyTypeRichText,
 			notionapi.PropertyTypeNumber, // TOOD: number validator
@@ -122,16 +124,26 @@ func initialModel(entryForm EntryInputForm) model {
 			notionapi.PropertyTypeCheckbox,
 			notionapi.PropertyTypeEmail,
 			notionapi.PropertyTypePhoneNumber: // TODO: phone number validator
-			inputs[idx] = textinput.New()
-			inputs[idx].Placeholder = title
+
+			ti := textinput.New()
+			ti.Placeholder = title
+
+			elements[idx] = ti
 			idx++
 		default:
 			fmt.Printf("unsupported property type: %s", prop)
 		}
 	}
 
+	ta := textarea.New()
+	ta.Placeholder = "Start writing..."
+	ta.SetWidth(50)
+	ta.SetHeight(10)
+
+	elements[len(elements)-1] = ta
+
 	return model{
-		inputs:     inputs,
+		elements:   elements,
 		focused:    0,
 		err:        nil,
 		bottomText: "Continue ->",
@@ -143,18 +155,13 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd = make([]tea.Cmd, len(m.inputs))
+	var cmds []tea.Cmd = make([]tea.Cmd, len(m.elements))
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
-			if m.focused == len(m.inputs)-1 {
-				// print the values
-				for i := range m.inputs {
-					// TODO: create a body and send in POST request
-					fmt.Printf("%s: %s\n", m.inputs[i].Placeholder, m.inputs[i].Value())
-				}
+			if m.focused == len(m.elements)-1 {
 				return m, tea.Quit
 			}
 			m.nextInput()
@@ -167,56 +174,82 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.nextInput()
 			m.updateBottomText()
 		}
-		for i := range m.inputs {
-			m.inputs[i].Blur()
-		}
-		m.inputs[m.focused].Focus()
 
 	case errMsg:
 		m.err = msg
 		return m, nil
 	}
 
-	for i := range m.inputs {
-		m.inputs[i], cmds[i] = m.inputs[i].Update(msg)
+	// Update each element and collect commands
+	for i := range m.elements {
+		switch elem := m.elements[i].(type) {
+		case textinput.Model:
+			m.elements[i], cmds[i] = elem.Update(msg)
+		case textarea.Model:
+			m.elements[i], cmds[i] = elem.Update(msg)
+		}
 	}
-	return m, tea.Batch(cmds...)
+	var cmd tea.Cmd
+
+	return m, tea.Batch(append(cmds, cmd)...)
 }
 
 func (m model) View() string {
-	var inputsView string
-	for i := range m.inputs {
-		inputsView += fmt.Sprintf("%s\n%s\n", inputStyle.Width(30).Render(m.inputs[i].Placeholder), m.inputs[i].View())
+	var inputsView strings.Builder
+
+	for i, elem := range m.elements {
+		switch elem := elem.(type) {
+		case textinput.Model:
+			inputsView.WriteString(fmt.Sprintf("%s\n%s\n", inputStyle.Width(30).Render(elem.Placeholder), elem.View()))
+		case textarea.Model:
+			if i == len(m.elements)-1 { // TextArea is the last element
+				inputsView.WriteString(fmt.Sprintf("\n%s\n%s\n", inputStyle.Width(30).Render("Content"), elem.View()))
+			}
+		}
 	}
 
 	return fmt.Sprintf(
-		` %s
-
-%s
-
- %s
-`,
+		"\n%s\n\n%s\n%s\n",
 		bottomTextStyle.Width(30).Bold(true).Render("Add new entry to database:"),
-
-		inputsView,
-
+		inputsView.String(), // Convert inputsView to string
 		bottomTextStyle.Render(m.bottomText),
 	) + "\n"
 }
 
 func (m *model) nextInput() {
-	m.focused = (m.focused + 1) % len(m.inputs)
+	m.blurCurrentElement()
+	m.focused = (m.focused + 1) % len(m.elements)
+	m.focusCurrentElement()
 }
 
 func (m *model) prevInput() {
-	m.focused--
-	if m.focused < 0 {
-		m.focused = len(m.inputs) - 1
+	m.blurCurrentElement()
+	m.focused = (m.focused - 1 + len(m.elements)) % len(m.elements)
+	m.focusCurrentElement()
+}
+
+func (m *model) blurCurrentElement() {
+	if elem, ok := m.elements[m.focused].(textinput.Model); ok {
+		elem.Blur()
+		m.elements[m.focused] = elem
+	} else if elem, ok := m.elements[m.focused].(textarea.Model); ok {
+		elem.Blur()
+		m.elements[m.focused] = elem
+	}
+}
+
+func (m *model) focusCurrentElement() {
+	if elem, ok := m.elements[m.focused].(textinput.Model); ok {
+		elem.Focus()
+		m.elements[m.focused] = elem
+	} else if elem, ok := m.elements[m.focused].(textarea.Model); ok {
+		elem.Focus()
+		m.elements[m.focused] = elem
 	}
 }
 
 func (m *model) updateBottomText() {
-	if m.focused == len(m.inputs)-1 {
+	if m.focused == len(m.elements)-1 {
 		m.bottomText = "Press Enter to Submit"
 	} else {
 		m.bottomText = "Continue ->"
