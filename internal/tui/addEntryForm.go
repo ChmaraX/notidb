@@ -237,17 +237,17 @@ func (m model) View() string {
 	for _, elem := range m.elements {
 		switch elem := elem.(type) {
 		case textinput.Model:
-			inputsView.WriteString(fmt.Sprintf("%s\n%s\n", inputStyle.Width(30).Render(elem.Placeholder), elem.View()))
+			inputsView.WriteString(fmt.Sprintf("%s%s\n", inputStyle.Width(15).Render(elem.Placeholder), elem.View()))
 		case textarea.Model:
 			inputsView.WriteString(fmt.Sprintf("\n%s\n%s\n", inputStyle.Width(30).Render("Content"), elem.View()))
 		}
 	}
 
 	return fmt.Sprintf(
-		"\n%s\n%s\n",
+		"\n%s\n%s\n\n",
 		inputsView.String(),
 		m.helpView(),
-	) + "\n"
+	)
 }
 
 func (m *model) nextInput() {
