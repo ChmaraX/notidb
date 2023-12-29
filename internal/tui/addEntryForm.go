@@ -41,11 +41,23 @@ var (
 )
 
 type model struct {
-	elements []interface{} // common array for all inputs
-	focused  int
-	err      error
-	help     help.Model
-	keymap   keymap
+	props        []PropInput
+	block        BlockInput
+	focusedProp  int
+	focusOnProps bool
+	err          error
+	help         help.Model
+	keymap       keymap
+}
+
+type PropInput struct {
+	propType notionapi.PropertyType
+	model    textinput.Model
+}
+
+type BlockInput struct {
+	propType notionapi.Block
+	model    textarea.Model
 }
 
 type keymap struct {
@@ -55,10 +67,7 @@ type keymap struct {
 	quit key.Binding
 }
 
-type EntryInputForm struct {
-	Props   map[string]notionapi.PropertyType
-	Content string
-}
+type EntryInputForm map[string]notionapi.PropertyType
 
 func createEntryInputForm(dbId string) EntryInputForm {
 	schema, err := internal.GetDatabaseSchema(dbId)
@@ -66,11 +75,7 @@ func createEntryInputForm(dbId string) EntryInputForm {
 		fmt.Printf("Error: %v\n", err)
 	}
 	props := filterSupportedProps(schema)
-
-	return EntryInputForm{
-		Props:   props,
-		Content: "",
-	}
+	return EntryInputForm(props)
 }
 
 // filter props supported by the TUI form
@@ -102,37 +107,47 @@ func numberValidator(s string) error {
 	return nil
 }
 
-func createTextInput(title string, validator textinput.ValidateFunc) textinput.Model {
+func createPropInput(title string, propType notionapi.PropertyType, validator textinput.ValidateFunc) PropInput {
 	ti := textinput.New()
 	ti.Placeholder = title
 	ti.Validate = validator
-	return ti
+
+	return PropInput{
+		propType: propType,
+		model:    ti,
+	}
 }
 
-func createContentTextArea() textarea.Model {
+func createBlockInput() BlockInput {
 	ta := textarea.New()
 	ta.Placeholder = "Start writing..."
 	ta.SetWidth(50)
 	ta.SetHeight(10)
-	return ta
+
+	return BlockInput{
+		propType: notionapi.ParagraphBlock{},
+		model:    ta,
+	}
 }
 
 func initialModel(entryForm EntryInputForm) model {
-	elements := make([]interface{}, len(entryForm.Props)+1)
+	// create map of prop inputs
+	propInputs := make([]PropInput, len(entryForm))
 
 	validators := map[notionapi.PropertyType]textinput.ValidateFunc{
 		notionapi.PropertyTypeSelect: numberValidator,
 		// TODO: Add validators for other property types
 	}
 
-	titleIdx := 0 // always first
+	titleIdx := 0 // title is always first
 	idx := 1
-	for title, prop := range entryForm.Props {
-		switch prop {
+	for title, propType := range entryForm {
+
+		switch propType {
 		case notionapi.PropertyTypeTitle:
-			ti := createTextInput(title, nil)
-			ti.Focus()
-			elements[titleIdx] = ti
+			pi := createPropInput(title, propType, nil)
+			pi.model.Focus()
+			propInputs[titleIdx] = pi
 		case
 			notionapi.PropertyTypeRichText,
 			notionapi.PropertyTypeSelect,
@@ -142,25 +157,25 @@ func initialModel(entryForm EntryInputForm) model {
 			notionapi.PropertyTypeNumber,
 			notionapi.PropertyTypeEmail,
 			notionapi.PropertyTypePhoneNumber: // TODO: phone number validator
-			elements[idx] = createTextInput(title, validators[prop])
+			propInputs[idx] = createPropInput(title, propType, validators[propType])
 			idx++
 		default:
-			fmt.Printf("unsupported property type: %s", prop)
+			fmt.Printf("unsupported property type: %s", propType)
 		}
 	}
-
-	elements[len(elements)-1] = createContentTextArea()
 
 	// help styles
 	help := help.New()
 	help.Styles.ShortKey = lipgloss.NewStyle().Foreground(darkGray)
 
 	return model{
-		elements: elements,
-		focused:  0,
-		err:      nil,
-		keymap:   getHelpKeyMap(),
-		help:     help,
+		props:        propInputs,
+		block:        createBlockInput(),
+		focusedProp:  0,
+		focusOnProps: true,
+		err:          nil,
+		keymap:       getHelpKeyMap(),
+		help:         help,
 	}
 }
 
@@ -199,7 +214,7 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd = make([]tea.Cmd, len(m.elements))
+	var cmds []tea.Cmd = make([]tea.Cmd, len(m.props)+1) // +1 for block input
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -220,21 +235,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Update each element and collect commands
-	for i := range m.elements {
-		switch elem := m.elements[i].(type) {
-		case textinput.Model:
-			m.elements[i], cmds[i] = elem.Update(msg)
-		case textarea.Model:
-			m.elements[i], cmds[i] = elem.Update(msg)
-		}
+	for i := range m.props {
+		m.props[i].model, cmds[i] = m.props[i].model.Update(msg)
 	}
+	m.block.model, cmds[len(m.props)] = m.block.model.Update(msg)
 
 	return m, tea.Batch(cmds...)
 }
 
-func getElemErrMsg(elem textinput.Model) string {
-	if elem.Err != nil {
-		return errorStyle.Render(elem.Err.Error())
+func getElemErrMsg(input textinput.Model) string {
+	if input.Err != nil {
+		return errorStyle.Render(input.Err.Error())
 	}
 	return ""
 }
@@ -242,50 +253,61 @@ func getElemErrMsg(elem textinput.Model) string {
 func (m model) View() string {
 	var inputsView strings.Builder
 
-	for _, elem := range m.elements {
-		switch elem := elem.(type) {
-		case textinput.Model:
-			inputsView.WriteString(fmt.Sprintf("%s%s%s\n", inputStyle.Width(15).Render(elem.Placeholder), elem.View(), getElemErrMsg(elem)))
-		case textarea.Model:
-			inputsView.WriteString(fmt.Sprintf("\n%s\n%s\n", inputStyle.Width(30).Render("Content"), elem.View()))
-		}
+	for _, value := range m.props {
+		input := value.model
+		inputsView.WriteString(fmt.Sprintf("%s%s%s\n", inputStyle.Width(15).Render(input.Placeholder), input.View(), getElemErrMsg(input)))
 	}
 
-	return fmt.Sprintf(
-		"\n%s\n%s\n\n",
-		inputsView.String(),
-		m.helpView(),
-	)
+	inputsView.WriteString(fmt.Sprintf("\n%s\n%s\n", inputStyle.Width(30).Render("Content"), m.block.model.View()))
+
+	return fmt.Sprintf("\n%s\n%s\n\n", inputsView.String(), m.helpView())
 }
 
 func (m *model) nextInput() {
 	m.blurCurrentElement()
-	m.focused = (m.focused + 1) % len(m.elements)
+
+	if m.focusOnProps {
+		m.focusedProp++
+		if m.focusedProp >= len(m.props) {
+			m.focusOnProps = false
+			m.focusedProp = 0
+		}
+	} else {
+		m.focusOnProps = true
+	}
+
 	m.focusCurrentElement()
 }
 
 func (m *model) prevInput() {
 	m.blurCurrentElement()
-	m.focused = (m.focused - 1 + len(m.elements)) % len(m.elements)
+
+	if m.focusOnProps {
+		if m.focusedProp == 0 {
+			m.focusOnProps = false
+		} else {
+			m.focusedProp--
+		}
+	} else {
+		m.focusOnProps = true
+		m.focusedProp = len(m.props) - 1
+	}
+
 	m.focusCurrentElement()
 }
 
 func (m *model) blurCurrentElement() {
-	if elem, ok := m.elements[m.focused].(textinput.Model); ok {
-		elem.Blur()
-		m.elements[m.focused] = elem
-	} else if elem, ok := m.elements[m.focused].(textarea.Model); ok {
-		elem.Blur()
-		m.elements[m.focused] = elem
+	if m.focusOnProps {
+		m.props[m.focusedProp].model.Blur()
+	} else {
+		m.block.model.Blur()
 	}
 }
 
 func (m *model) focusCurrentElement() {
-	if elem, ok := m.elements[m.focused].(textinput.Model); ok {
-		elem.Focus()
-		m.elements[m.focused] = elem
-	} else if elem, ok := m.elements[m.focused].(textarea.Model); ok {
-		elem.Focus()
-		m.elements[m.focused] = elem
+	if m.focusOnProps {
+		m.props[m.focusedProp].model.Focus()
+	} else {
+		m.block.model.Focus()
 	}
 }
