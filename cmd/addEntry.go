@@ -16,7 +16,7 @@ type cmdArgs struct {
 	dbId    string
 }
 
-const DefaultTitlePropKey = "Title"
+const DefaultTitlePropKey = "title"
 
 func (a *cmdArgs) validateDefaultDb() error {
 	if a.dbId == "" {
@@ -46,15 +46,6 @@ func createEntryFromArgs(a cmdArgs) internal.DatabaseEntry {
 	return entry
 }
 
-func addEntry(dbId string, entry internal.DatabaseEntry) (notionapi.Page, error) {
-	res, err := internal.AddDatabaseEntry(dbId, entry)
-	if err != nil {
-		return notionapi.Page{}, fmt.Errorf("failed to add database entry: %w", err)
-	}
-
-	return res, nil
-}
-
 var addEntryCmd = &cobra.Command{
 	Use:     "add",
 	Aliases: []string{"a"},
@@ -65,19 +56,16 @@ var addEntryCmd = &cobra.Command{
 			return
 		}
 		dbId, title, content := args.dbId, args.title, args.content
-
+		// TODO:
+		// 2. form.go - form for adding entry,
+		// 3. load.go - generic loading model, with funcs as params and also load/result validating func
 		if title == "" && content == "" {
 			tui.InitForm(dbId)
 			return
 		}
 
 		entry := createEntryFromArgs(args)
-		page, err := addEntry(dbId, entry)
-		if err != nil {
-			fmt.Printf("Error adding entry: %v\n", err)
-			return
-		}
-		fmt.Printf("Entry successfully added: %s\n", page.URL)
+		tui.InitSave(dbId, entry)
 	},
 }
 

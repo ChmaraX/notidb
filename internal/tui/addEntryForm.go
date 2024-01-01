@@ -17,17 +17,13 @@ import (
 )
 
 func InitForm(dbId string) {
-	entryForm := createEntryInputForm(dbId)
-	p := tea.NewProgram(initialModel(entryForm))
+	schema := getFilteredSchema(dbId)
+	p := tea.NewProgram(initialModel(dbId, schema))
 
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}
 }
-
-type (
-	errMsg error
-)
 
 const (
 	hotPink  = lipgloss.Color("#FF06B7")
@@ -41,6 +37,7 @@ var (
 )
 
 type model struct {
+	dbId         string
 	props        []PropInput
 	block        BlockInput
 	focusedProp  int
@@ -67,15 +64,33 @@ type keymap struct {
 	quit key.Binding
 }
 
-type EntryInputForm map[string]notionapi.PropertyType
+func (m model) toDatabaseEntry() internal.DatabaseEntry {
+	entry := internal.DatabaseEntry{
+		Props:  make(notionapi.Properties),
+		Blocks: make([]notionapi.Block, 0),
+	}
 
-func createEntryInputForm(dbId string) EntryInputForm {
+	for _, prop := range m.props {
+		propTitle := prop.model.Placeholder
+		propValue := prop.model.Value()
+		switch prop.propType {
+		case notionapi.PropertyTypeTitle:
+			entry.Props[propTitle] = internal.CreateTitleProperty(propValue)
+		}
+	}
+
+	entry.Blocks = append(entry.Blocks, internal.CreateContentBlock(m.block.model.Value()))
+
+	return entry
+}
+
+func getFilteredSchema(dbId string) map[string]notionapi.PropertyType {
 	schema, err := internal.GetDatabaseSchema(dbId)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}
 	props := filterSupportedProps(schema)
-	return EntryInputForm(props)
+	return props
 }
 
 // filter props supported by the TUI form
@@ -130,9 +145,9 @@ func createBlockInput() BlockInput {
 	}
 }
 
-func initialModel(entryForm EntryInputForm) model {
+func initialModel(dbId string, schema map[string]notionapi.PropertyType) model {
 	// create map of prop inputs
-	propInputs := make([]PropInput, len(entryForm))
+	propInputs := make([]PropInput, len(schema))
 
 	validators := map[notionapi.PropertyType]textinput.ValidateFunc{
 		notionapi.PropertyTypeSelect: numberValidator,
@@ -141,7 +156,7 @@ func initialModel(entryForm EntryInputForm) model {
 
 	titleIdx := 0 // title is always first
 	idx := 1
-	for title, propType := range entryForm {
+	for title, propType := range schema {
 
 		switch propType {
 		case notionapi.PropertyTypeTitle:
@@ -169,6 +184,7 @@ func initialModel(entryForm EntryInputForm) model {
 	help.Styles.ShortKey = lipgloss.NewStyle().Foreground(darkGray)
 
 	return model{
+		dbId:         dbId,
 		props:        propInputs,
 		block:        createBlockInput(),
 		focusedProp:  0,
@@ -220,7 +236,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlS:
-			return m, tea.Quit
+			save := NewSaveModel(m.dbId, m.toDatabaseEntry())
+			return save, save.Init()
 		case tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyShiftTab, tea.KeyCtrlP:
@@ -228,10 +245,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyTab, tea.KeyCtrlN:
 			m.nextInput()
 		}
-
-	case errMsg:
-		m.err = msg
-		return m, nil
 	}
 
 	// Update each element and collect commands
