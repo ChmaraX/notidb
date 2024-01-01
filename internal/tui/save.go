@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ChmaraX/notidb/internal"
+	"github.com/ChmaraX/notidb/internal/notion"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type saveModel struct {
 	dbId    string
-	entry   internal.DatabaseEntry
+	entry   notion.DatabaseEntry
 	saving  bool
 	res     res
 	spinner spinner.Model
@@ -23,7 +23,7 @@ type res struct {
 }
 
 func (m saveModel) saveEntry() tea.Msg {
-	page, err := internal.AddDatabaseEntry(m.dbId, m.entry)
+	page, err := notion.AddDatabaseEntry(m.dbId, m.entry)
 	if err != nil {
 		return res{url: "", err: fmt.Errorf("failed to add database entry: %w", err)}
 	}
@@ -61,13 +61,13 @@ func (m saveModel) View() string {
 	}
 }
 
-func NewSaveModel(dbId string, entry internal.DatabaseEntry) *saveModel {
+func NewSaveModel(dbId string, entry notion.DatabaseEntry) *saveModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	return &saveModel{dbId: dbId, entry: entry, spinner: s, saving: true}
 }
 
-func InitSave(dbId string, entry internal.DatabaseEntry) {
+func InitSave(dbId string, entry notion.DatabaseEntry) {
 	m := NewSaveModel(dbId, entry)
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Println("Error running program:", err)

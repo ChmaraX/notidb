@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/ChmaraX/notidb/internal"
+	"github.com/ChmaraX/notidb/internal/notion"
 	"github.com/ChmaraX/notidb/internal/settings"
 	"github.com/ChmaraX/notidb/internal/tui"
 	"github.com/jomei/notionapi"
@@ -29,18 +29,18 @@ func (a *cmdArgs) validateDefaultDb() error {
 	return nil
 }
 
-func createEntryFromArgs(a cmdArgs) internal.DatabaseEntry {
-	entry := internal.DatabaseEntry{
+func createEntryFromArgs(a cmdArgs) notion.DatabaseEntry {
+	entry := notion.DatabaseEntry{
 		Props:  make(notionapi.Properties),
 		Blocks: make([]notionapi.Block, 0),
 	}
 
 	if a.title != "" {
-		entry.Props[DefaultTitlePropKey] = internal.CreateTitleProperty(a.title)
+		entry.Props[DefaultTitlePropKey] = notion.CreateTitleProperty(a.title)
 	}
 
 	if a.content != "" {
-		entry.Blocks = append(entry.Blocks, internal.CreateContentBlock(a.content))
+		entry.Blocks = append(entry.Blocks, notion.CreateContentBlock(a.content))
 	}
 
 	return entry
@@ -56,12 +56,9 @@ var addEntryCmd = &cobra.Command{
 			return
 		}
 		dbId, title, content := args.dbId, args.title, args.content
-		// TODO:
-		// 2. form.go - form for adding entry,
-		// 3. load.go - generic loading model, with funcs as params and also load/result validating func
+
 		if title == "" && content == "" {
 			tui.InitForm(dbId)
-			return
 		}
 
 		entry := createEntryFromArgs(args)

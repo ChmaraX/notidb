@@ -1,8 +1,9 @@
-package internal
+package notion
 
 import (
 	"context"
 
+	"github.com/ChmaraX/notidb/internal"
 	"github.com/jomei/notionapi"
 )
 
@@ -103,7 +104,7 @@ func AddDatabaseEntry(dbId string, entry DatabaseEntry) (notionapi.Page, error) 
 }
 
 func CreateNotionClient() {
-	c, err := LoadConfig()
+	c, err := internal.LoadConfig()
 	if err != nil {
 		panic(err)
 	}

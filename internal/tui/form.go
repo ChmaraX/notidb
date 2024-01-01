@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ChmaraX/notidb/internal"
+	"github.com/ChmaraX/notidb/internal/notion"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -64,8 +64,8 @@ type keymap struct {
 	quit key.Binding
 }
 
-func (m model) toDatabaseEntry() internal.DatabaseEntry {
-	entry := internal.DatabaseEntry{
+func (m model) toDatabaseEntry() notion.DatabaseEntry {
+	entry := notion.DatabaseEntry{
 		Props:  make(notionapi.Properties),
 		Blocks: make([]notionapi.Block, 0),
 	}
@@ -75,17 +75,17 @@ func (m model) toDatabaseEntry() internal.DatabaseEntry {
 		propValue := prop.model.Value()
 		switch prop.propType {
 		case notionapi.PropertyTypeTitle:
-			entry.Props[propTitle] = internal.CreateTitleProperty(propValue)
+			entry.Props[propTitle] = notion.CreateTitleProperty(propValue)
 		}
 	}
 
-	entry.Blocks = append(entry.Blocks, internal.CreateContentBlock(m.block.model.Value()))
+	entry.Blocks = append(entry.Blocks, notion.CreateContentBlock(m.block.model.Value()))
 
 	return entry
 }
 
 func getFilteredSchema(dbId string) map[string]notionapi.PropertyType {
-	schema, err := internal.GetDatabaseSchema(dbId)
+	schema, err := notion.GetDatabaseSchema(dbId)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}
@@ -95,7 +95,7 @@ func getFilteredSchema(dbId string) map[string]notionapi.PropertyType {
 
 // filter props supported by the TUI form
 func filterSupportedProps(schema notionapi.PropertyConfigs) map[string]notionapi.PropertyType {
-	supportedPropTypes := internal.GetSupportedPropTypes()
+	supportedPropTypes := notion.GetSupportedPropTypes()
 
 	// Convert slice to map for faster lookup
 	supportedPropTypesMap := make(map[string]bool)
@@ -145,14 +145,17 @@ func createBlockInput() BlockInput {
 	}
 }
 
+func initValidators() map[notionapi.PropertyType]textinput.ValidateFunc {
+	return map[notionapi.PropertyType]textinput.ValidateFunc{
+		notionapi.PropertyTypeNumber: numberValidator,
+	}
+}
+
 func initialModel(dbId string, schema map[string]notionapi.PropertyType) model {
 	// create map of prop inputs
 	propInputs := make([]PropInput, len(schema))
 
-	validators := map[notionapi.PropertyType]textinput.ValidateFunc{
-		notionapi.PropertyTypeSelect: numberValidator,
-		// TODO: Add validators for other property types
-	}
+	validators := initValidators()
 
 	titleIdx := 0 // title is always first
 	idx := 1

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ChmaraX/notidb/internal"
+	"github.com/ChmaraX/notidb/internal/notion"
 	"github.com/ChmaraX/notidb/internal/settings"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -12,7 +12,7 @@ import (
 )
 
 func loadDatabases() tea.Msg {
-	databases, err := internal.GetAllNotionDbs()
+	databases, err := notion.GetAllNotionDbs()
 	if err != nil {
 		return dbs{list: nil, err: fmt.Errorf("error loading databases: %v", err), loaded: true}
 	}
