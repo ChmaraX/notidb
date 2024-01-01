@@ -23,7 +23,6 @@ type res struct {
 }
 
 func (m saveModel) saveEntry() tea.Msg {
-	fmt.Printf("%+v\n", m.entry)
 	page, err := internal.AddDatabaseEntry(m.dbId, m.entry)
 	if err != nil {
 		return res{url: "", err: fmt.Errorf("failed to add database entry: %w", err)}
