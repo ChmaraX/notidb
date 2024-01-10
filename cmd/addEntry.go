@@ -59,6 +59,7 @@ var addEntryCmd = &cobra.Command{
 
 		if title == "" && content == "" {
 			tui.InitForm(dbId)
+			return
 		}
 
 		entry := createEntryFromArgs(args)

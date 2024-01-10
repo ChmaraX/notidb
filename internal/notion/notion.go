@@ -9,51 +9,6 @@ import (
 
 var NotionClient *notionapi.Client
 
-func GetSupportedPropTypes() []notionapi.PropertyType {
-	return []notionapi.PropertyType{
-		notionapi.PropertyTypeTitle,
-		notionapi.PropertyTypeRichText,
-		notionapi.PropertyTypeNumber,
-		notionapi.PropertyTypeSelect,
-		notionapi.PropertyTypeMultiSelect,
-		notionapi.PropertyTypeDate,
-		notionapi.PropertyTypeCheckbox,
-		notionapi.PropertyTypeEmail,
-		notionapi.PropertyTypePhoneNumber,
-	}
-}
-
-func CreateContentBlock(content string) notionapi.Block {
-	return notionapi.ParagraphBlock{
-		BasicBlock: notionapi.BasicBlock{
-			Object: "block",
-			Type:   "paragraph",
-		},
-		Paragraph: notionapi.Paragraph{
-			RichText: []notionapi.RichText{
-				{
-					Type: "text",
-					Text: &notionapi.Text{
-						Content: content,
-					},
-				},
-			},
-		},
-	}
-}
-
-func CreateTitleProperty(title string) notionapi.TitleProperty {
-	return notionapi.TitleProperty{Title: []notionapi.RichText{
-		{
-			Type: "text",
-			Text: &notionapi.Text{
-				Content: title,
-			},
-		},
-	},
-	}
-}
-
 func GetAllNotionDbs() ([]notionapi.Database, error) {
 	res, err := NotionClient.Search.Do(context.Background(), &notionapi.SearchRequest{
 		Filter: notionapi.SearchFilter{

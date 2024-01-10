@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ChmaraX/notidb/internal/notion"
+	"github.com/ChmaraX/notidb/internal/utils"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -73,9 +74,44 @@ func (m model) toDatabaseEntry() notion.DatabaseEntry {
 	for _, prop := range m.props {
 		propTitle := prop.model.Placeholder
 		propValue := prop.model.Value()
+
+		if propValue == "" {
+			continue
+		}
+
 		switch prop.propType {
 		case notionapi.PropertyTypeTitle:
 			entry.Props[propTitle] = notion.CreateTitleProperty(propValue)
+		case notionapi.PropertyTypeRichText:
+			entry.Props[propTitle] = notion.CreateRichTextProperty(propValue)
+		case notionapi.PropertyTypeSelect:
+			entry.Props[propTitle] = notion.CreateSelectProperty(propValue)
+		case notionapi.PropertyTypeMultiSelect:
+			entry.Props[propTitle] = notion.CreateMultiSelectProperty(strings.Split(propValue, ","))
+		case notionapi.PropertyTypeDate:
+			date, err := notion.CreateDateProperty(propValue)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+			}
+			entry.Props[propTitle] = date
+		case notionapi.PropertyTypeCheckbox:
+			value, err := utils.ParseBool(propValue)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+			}
+			entry.Props[propTitle] = notion.CreateCheckboxProperty(value)
+		case notionapi.PropertyTypeNumber:
+			num, err := strconv.ParseFloat(propValue, 64)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+			}
+			entry.Props[propTitle] = notion.CreateNumberProperty(num)
+		case notionapi.PropertyTypeEmail:
+			entry.Props[propTitle] = notion.CreateEmailProperty(propValue)
+		case notionapi.PropertyTypePhoneNumber:
+			entry.Props[propTitle] = notion.CreatePhoneNumberProperty(propValue)
+		default:
+			fmt.Printf("unsupported property type: %s", prop.propType)
 		}
 	}
 
@@ -122,10 +158,19 @@ func numberValidator(s string) error {
 	return nil
 }
 
+func checkboxValidator(s string) error {
+	_, err := utils.ParseBool(s)
+	if err != nil && s != "" {
+		return err
+	}
+	return nil
+}
+
 func createPropInput(title string, propType notionapi.PropertyType, validator textinput.ValidateFunc) PropInput {
 	ti := textinput.New()
 	ti.Placeholder = title
 	ti.Validate = validator
+	// TODO: add placeholder based on prop type
 
 	return PropInput{
 		propType: propType,
@@ -145,9 +190,11 @@ func createBlockInput() BlockInput {
 	}
 }
 
+// TODO: call validators on submit
 func initValidators() map[notionapi.PropertyType]textinput.ValidateFunc {
 	return map[notionapi.PropertyType]textinput.ValidateFunc{
-		notionapi.PropertyTypeNumber: numberValidator,
+		notionapi.PropertyTypeNumber:   numberValidator,
+		notionapi.PropertyTypeCheckbox: checkboxValidator,
 	}
 }
 

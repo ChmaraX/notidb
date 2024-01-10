@@ -1,10 +1,24 @@
 package utils
 
-func Contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
+import (
+	"fmt"
+	"time"
+)
+
+func ParseDateInLocation(dateString, layout string) (time.Time, error) {
+	parsedDate, err := time.ParseInLocation(layout, dateString, time.Local)
+	if err != nil {
+		return time.Time{}, err
 	}
-	return false
+	return parsedDate, nil
+}
+
+func ParseBool(str string) (bool, error) {
+	switch str {
+	case "y", "Y":
+		return true, nil
+	case "n", "N":
+		return false, nil
+	}
+	return false, fmt.Errorf("must be y/n or Y/N")
 }
