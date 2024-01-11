@@ -37,6 +37,22 @@ var (
 	errorStyle = lipgloss.NewStyle().Foreground(darkRed).MarginLeft(2)
 )
 
+var validators = map[notionapi.PropertyType]textinput.ValidateFunc{
+	notionapi.PropertyTypeNumber:   numberValidator,
+	notionapi.PropertyTypeCheckbox: checkboxValidator,
+}
+
+var placeholders = map[notionapi.PropertyType]string{
+	notionapi.PropertyTypeRichText:    "Enter text",
+	notionapi.PropertyTypeSelect:      "Enter value",
+	notionapi.PropertyTypeMultiSelect: "Enter comma separated values",
+	notionapi.PropertyTypeDate:        "31/12/1990",
+	notionapi.PropertyTypeCheckbox:    "y/n",
+	notionapi.PropertyTypeNumber:      "123",
+	notionapi.PropertyTypeEmail:       "example@email.com",
+	notionapi.PropertyTypePhoneNumber: "+48 123 456 789",
+}
+
 type model struct {
 	dbId         string
 	props        []PropInput
@@ -51,6 +67,7 @@ type model struct {
 type PropInput struct {
 	propType notionapi.PropertyType
 	model    textinput.Model
+	title    string
 }
 
 type BlockInput struct {
@@ -72,7 +89,7 @@ func (m model) toDatabaseEntry() notion.DatabaseEntry {
 	}
 
 	for _, prop := range m.props {
-		propTitle := prop.model.Placeholder
+		propTitle := prop.title
 		propValue := prop.model.Value()
 
 		if propValue == "" {
@@ -87,7 +104,8 @@ func (m model) toDatabaseEntry() notion.DatabaseEntry {
 		case notionapi.PropertyTypeSelect:
 			entry.Props[propTitle] = notion.CreateSelectProperty(propValue)
 		case notionapi.PropertyTypeMultiSelect:
-			entry.Props[propTitle] = notion.CreateMultiSelectProperty(strings.Split(propValue, ","))
+			v := strings.Split(propValue, ",")
+			entry.Props[propTitle] = notion.CreateMultiSelectProperty(v)
 		case notionapi.PropertyTypeDate:
 			date, err := notion.CreateDateProperty(propValue)
 			if err != nil {
@@ -95,17 +113,11 @@ func (m model) toDatabaseEntry() notion.DatabaseEntry {
 			}
 			entry.Props[propTitle] = date
 		case notionapi.PropertyTypeCheckbox:
-			value, err := utils.ParseBool(propValue)
-			if err != nil {
-				fmt.Printf("Error: %v\n", err)
-			}
-			entry.Props[propTitle] = notion.CreateCheckboxProperty(value)
+			v, _ := utils.ParseBool(propValue)
+			entry.Props[propTitle] = notion.CreateCheckboxProperty(v)
 		case notionapi.PropertyTypeNumber:
-			num, err := strconv.ParseFloat(propValue, 64)
-			if err != nil {
-				fmt.Printf("Error: %v\n", err)
-			}
-			entry.Props[propTitle] = notion.CreateNumberProperty(num)
+			v, _ := strconv.ParseFloat(propValue, 64)
+			entry.Props[propTitle] = notion.CreateNumberProperty(v)
 		case notionapi.PropertyTypeEmail:
 			entry.Props[propTitle] = notion.CreateEmailProperty(propValue)
 		case notionapi.PropertyTypePhoneNumber:
@@ -151,7 +163,7 @@ func filterSupportedProps(schema notionapi.PropertyConfigs) map[string]notionapi
 }
 
 func numberValidator(s string) error {
-	_, err := strconv.ParseInt(s, 10, 64)
+	_, err := strconv.ParseFloat(s, 64)
 	if err != nil && s != "" {
 		return fmt.Errorf("must be number")
 	}
@@ -161,20 +173,20 @@ func numberValidator(s string) error {
 func checkboxValidator(s string) error {
 	_, err := utils.ParseBool(s)
 	if err != nil && s != "" {
-		return err
+		return fmt.Errorf("must be y/n")
 	}
 	return nil
 }
 
-func createPropInput(title string, propType notionapi.PropertyType, validator textinput.ValidateFunc) PropInput {
+func createPropInput(title string, propType notionapi.PropertyType) PropInput {
 	ti := textinput.New()
-	ti.Placeholder = title
-	ti.Validate = validator
-	// TODO: add placeholder based on prop type
+	ti.Placeholder = placeholders[propType]
+	ti.Validate = validators[propType]
 
 	return PropInput{
 		propType: propType,
 		model:    ti,
+		title:    title,
 	}
 }
 
@@ -190,19 +202,9 @@ func createBlockInput() BlockInput {
 	}
 }
 
-// TODO: call validators on submit
-func initValidators() map[notionapi.PropertyType]textinput.ValidateFunc {
-	return map[notionapi.PropertyType]textinput.ValidateFunc{
-		notionapi.PropertyTypeNumber:   numberValidator,
-		notionapi.PropertyTypeCheckbox: checkboxValidator,
-	}
-}
-
 func initialModel(dbId string, schema map[string]notionapi.PropertyType) model {
 	// create map of prop inputs
 	propInputs := make([]PropInput, len(schema))
-
-	validators := initValidators()
 
 	titleIdx := 0 // title is always first
 	idx := 1
@@ -210,19 +212,19 @@ func initialModel(dbId string, schema map[string]notionapi.PropertyType) model {
 
 		switch propType {
 		case notionapi.PropertyTypeTitle:
-			pi := createPropInput(title, propType, nil)
+			pi := createPropInput(title, propType)
 			pi.model.Focus()
 			propInputs[titleIdx] = pi
 		case
 			notionapi.PropertyTypeRichText,
 			notionapi.PropertyTypeSelect,
 			notionapi.PropertyTypeMultiSelect,
-			notionapi.PropertyTypeDate, // TODO: date validator
+			notionapi.PropertyTypeDate,
 			notionapi.PropertyTypeCheckbox,
 			notionapi.PropertyTypeNumber,
 			notionapi.PropertyTypeEmail,
-			notionapi.PropertyTypePhoneNumber: // TODO: phone number validator
-			propInputs[idx] = createPropInput(title, propType, validators[propType])
+			notionapi.PropertyTypePhoneNumber:
+			propInputs[idx] = createPropInput(title, propType)
 			idx++
 		default:
 			fmt.Printf("unsupported property type: %s", propType)
@@ -318,7 +320,7 @@ func (m model) View() string {
 
 	for _, value := range m.props {
 		input := value.model
-		inputsView.WriteString(fmt.Sprintf("%s%s%s\n", inputStyle.Width(15).Render(input.Placeholder), input.View(), getElemErrMsg(input)))
+		inputsView.WriteString(fmt.Sprintf("%s%s%s\n", inputStyle.Width(15).Render(value.title), input.View(), getElemErrMsg(input)))
 	}
 
 	inputsView.WriteString(fmt.Sprintf("\n%s\n%s\n", inputStyle.Width(30).Render("Content"), m.block.model.View()))
