@@ -74,9 +74,11 @@ func CreateSelectProperty(option string) notionapi.SelectProperty {
 }
 
 func CreateMultiSelectProperty(options []string) notionapi.MultiSelectProperty {
-	opts := make([]notionapi.Option, len(options))
-	for i, option := range options {
-		opts[i] = notionapi.Option{Name: option}
+	var opts []notionapi.Option
+	for _, option := range options {
+		if strings.TrimSpace(option) != "" {
+			opts = append(opts, notionapi.Option{Name: option})
+		}
 	}
 	return notionapi.MultiSelectProperty{MultiSelect: opts}
 }
