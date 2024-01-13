@@ -82,7 +82,7 @@ type keymap struct {
 	quit key.Binding
 }
 
-func (m model) toDatabaseEntry() notion.DatabaseEntry {
+func (m model) toDatabaseEntry() (notion.DatabaseEntry, error) {
 	entry := notion.DatabaseEntry{
 		Props:  make(notionapi.Properties),
 		Blocks: make([]notionapi.Block, 0),
@@ -109,7 +109,7 @@ func (m model) toDatabaseEntry() notion.DatabaseEntry {
 		case notionapi.PropertyTypeDate:
 			date, err := notion.CreateDateProperty(propValue)
 			if err != nil {
-				fmt.Printf("Error: %v\n", err)
+				return notion.DatabaseEntry{}, fmt.Errorf("failed to parse date: %w", err)
 			}
 			entry.Props[propTitle] = date
 		case notionapi.PropertyTypeCheckbox:
@@ -129,7 +129,7 @@ func (m model) toDatabaseEntry() notion.DatabaseEntry {
 
 	entry.Blocks = append(entry.Blocks, notion.CreateContentBlock(m.block.model.Value()))
 
-	return entry
+	return entry, nil
 }
 
 func getFilteredSchema(dbId string) map[string]notionapi.PropertyType {
@@ -288,7 +288,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlS:
-			save := NewSaveModel(m.dbId, m.toDatabaseEntry())
+			entry, err := m.toDatabaseEntry()
+			if err != nil {
+				m.err = err
+				return m, nil
+			}
+			save := NewSaveModel(m.dbId, entry)
 			return save, save.Init()
 		case tea.KeyCtrlC:
 			return m, tea.Quit
@@ -324,6 +329,10 @@ func (m model) View() string {
 	}
 
 	inputsView.WriteString(fmt.Sprintf("\n%s\n%s\n", inputStyle.Width(30).Render("Content"), m.block.model.View()))
+
+	if m.err != nil {
+		inputsView.WriteString(fmt.Sprintf("\n%s\n", errorStyle.Render(m.err.Error())))
+	}
 
 	return fmt.Sprintf("\n%s\n%s\n\n", inputsView.String(), m.helpView())
 }
