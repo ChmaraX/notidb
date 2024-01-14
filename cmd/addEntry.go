@@ -16,6 +16,8 @@ type cmdArgs struct {
 	dbId    string
 }
 
+var args cmdArgs
+
 const DefaultTitlePropKey = "title"
 const GreenCheckMark = "\033[32m✓\033[0m"
 
@@ -66,7 +68,11 @@ func wrappedSaveEntry(dbId string, entry notion.DatabaseEntry) func() tui.Respon
 
 func createEntry() notion.DatabaseEntry {
 	if args.title == "" && args.content == "" {
-		return tui.InitForm(args.dbId)
+		schema, err := notion.GetDatabaseSchema(args.dbId)
+		if err != nil {
+			fmt.Printf("Error getting DB schema: %v\n", err)
+		}
+		return tui.InitForm(schema)
 	}
 	return createEntryFromArgs(args)
 }
@@ -89,8 +95,6 @@ var addEntryCmd = &cobra.Command{
 		fmt.Printf("%s Saved: %s\n", GreenCheckMark, url)
 	},
 }
-
-var args cmdArgs
 
 func init() {
 	addEntryCmd.Flags().StringVarP(&args.title, "title", "t", "", "Title of the new entry")

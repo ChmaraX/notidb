@@ -17,9 +17,9 @@ import (
 	"github.com/jomei/notionapi"
 )
 
-func InitForm(dbId string) notion.DatabaseEntry {
-	schema := getFilteredSchema(dbId)
-	model, err := tea.NewProgram(initialModel(dbId, schema)).Run()
+func InitForm(schema notionapi.PropertyConfigs) notion.DatabaseEntry {
+	props := filterSupportedProps(schema)
+	model, err := tea.NewProgram(initialModel(props)).Run()
 
 	if err != nil {
 		fmt.Println("Error running program:", err)
@@ -57,7 +57,6 @@ var placeholders = map[notionapi.PropertyType]string{
 }
 
 type formModel struct {
-	dbId         string
 	entry        notion.DatabaseEntry
 	props        []PropInput
 	block        BlockInput
@@ -136,15 +135,6 @@ func (m formModel) toDatabaseEntry() (notion.DatabaseEntry, error) {
 	return entry, nil
 }
 
-func getFilteredSchema(dbId string) map[string]notionapi.PropertyType {
-	schema, err := notion.GetDatabaseSchema(dbId)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-	}
-	props := filterSupportedProps(schema)
-	return props
-}
-
 // filter props supported by the TUI form
 func filterSupportedProps(schema notionapi.PropertyConfigs) map[string]notionapi.PropertyType {
 	supportedPropTypes := notion.GetSupportedPropTypes()
@@ -206,13 +196,13 @@ func createBlockInput() BlockInput {
 	}
 }
 
-func initialModel(dbId string, schema map[string]notionapi.PropertyType) formModel {
+func initialModel(props map[string]notionapi.PropertyType) formModel {
 	// create map of prop inputs
-	propInputs := make([]PropInput, len(schema))
+	propInputs := make([]PropInput, len(props))
 
 	titleIdx := 0 // title is always first
 	idx := 1
-	for title, propType := range schema {
+	for title, propType := range props {
 
 		switch propType {
 		case notionapi.PropertyTypeTitle:
@@ -240,7 +230,6 @@ func initialModel(dbId string, schema map[string]notionapi.PropertyType) formMod
 	help.Styles.ShortKey = lipgloss.NewStyle().Foreground(darkGray)
 
 	return formModel{
-		dbId:         dbId,
 		props:        propInputs,
 		block:        createBlockInput(),
 		focusedProp:  0,
