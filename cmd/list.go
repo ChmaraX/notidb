@@ -6,6 +6,7 @@ import (
 	"github.com/ChmaraX/notidb/internal/notion"
 	"github.com/ChmaraX/notidb/internal/settings"
 	"github.com/ChmaraX/notidb/internal/tui"
+	"github.com/jomei/notionapi"
 	"github.com/spf13/cobra"
 )
 
@@ -32,18 +33,30 @@ func loadDefaultDatabase() tui.Response {
 	return tui.Response{Id: id, Data: defaultDbId, Err: nil}
 }
 
+func dbExists(dbs []notionapi.Database, dbId string) bool {
+	for _, db := range dbs {
+		if string(db.ID) == dbId {
+			return true
+		}
+	}
+	return false
+}
+
 var setDefaultDbCmd = &cobra.Command{
 	Use:     "set-db",
 	Aliases: []string{"sd"},
 	Short:   "Set default database",
 	Run: func(cmd *cobra.Command, args []string) {
-		// tui.list()
 
-		m := tui.NewLoadingModel(loadDatabases, loadDefaultDatabase)
-		// dbs := m.GetResponse("dbs")
-		defaultDb := m.GetResponse("defaultDb")
+		m := tui.NewLoadingModel("Calling Notion API - loading databases", loadDatabases, loadDefaultDatabase)
+		dbs := m.GetResponse("dbs").Data.([]notionapi.Database)
+		defaultDbId := m.GetResponse("defaultDb").Data.(string)
 
-		fmt.Printf("model: %v\n", defaultDb)
+		if !dbExists(dbs, defaultDbId) && defaultDbId != settings.NoDefaultDatabaseId {
+			fmt.Printf("database which is set as default (%s) was not found in your workspace or the access is not granted", defaultDbId)
+			return
+		}
 
+		tui.InitDbListModel(dbs, defaultDbId)
 	},
 }

@@ -10,6 +10,7 @@ import (
 
 type LoadingModel struct {
 	spinner    spinner.Model
+	action     string
 	asyncFuncs []func() tea.Msg
 	NumFuncs   int
 	err        error
@@ -43,11 +44,15 @@ type Response struct {
 	Err  error
 }
 
-func newLoadingModel1(funcs ...LoadingFunc) LoadingModel {
+func newLoadingModel(action string, funcs ...LoadingFunc) LoadingModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 
-	return LoadingModel{spinner: s, asyncFuncs: mapFuncsToMsgs(funcs), NumFuncs: len(funcs)}
+	return LoadingModel{
+		spinner:    s,
+		action:     action,
+		asyncFuncs: mapFuncsToMsgs(funcs),
+		NumFuncs:   len(funcs)}
 }
 
 func (m LoadingModel) GetResponse(id string) Response {
@@ -89,18 +94,18 @@ func (m LoadingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m LoadingModel) View() string {
 
 	if m.err != nil {
-		return fmt.Sprintf("Error loading: %v", m.err)
+		return fmt.Sprintf("Error %v: %v", m.action, m.err)
 	}
 
 	if len(m.Responses) == m.NumFuncs {
-		return "Done loading"
+		return "Done"
 	}
 
-	return m.spinner.View() + " Loading..."
+	return m.spinner.View() + " " + m.action
 }
 
-func NewLoadingModel(funcs ...LoadingFunc) LoadingModel {
-	m := newLoadingModel1(funcs...)
+func NewLoadingModel(action string, funcs ...LoadingFunc) LoadingModel {
+	m := newLoadingModel(action, funcs...)
 	model, err := tea.NewProgram(m).Run()
 
 	if err != nil {

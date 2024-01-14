@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/ChmaraX/notidb/internal/settings"
@@ -68,18 +69,18 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	fmt.Fprint(w, renderFn(builder.String()))
 }
 
-type DbListModel struct {
+type dbListModel struct {
 	list        list.Model
 	choice      string
 	quitting    bool
 	defaultDbId string
 }
 
-func (m DbListModel) Init() tea.Cmd {
+func (m dbListModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m DbListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m dbListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.list.SetWidth(msg.Width)
@@ -111,7 +112,7 @@ func (m DbListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m DbListModel) View() string {
+func (m dbListModel) View() string {
 	if m.choice != "" {
 		highlightStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("170"))
 		return quitTextStyle.Render(fmt.Sprintf("%s Default database successfully set to: %s", checkMark, highlightStyle.Render(m.choice)))
@@ -125,19 +126,19 @@ func (m DbListModel) View() string {
 	return "\n" + m.list.View()
 }
 
-func InitDbListModel(dbs []notionapi.Database, defaultDbId string) *DbListModel {
+func newDbListModel(dbs []notionapi.Database, defaultDbId string) *dbListModel {
 	items := make([]list.Item, len(dbs))
 	for i, db := range dbs {
 		items[i] = item{title: db.Title[0].PlainText, id: string(db.ID), def: string(db.ID) == defaultDbId}
 	}
 
-	l := initListModel(items)
-	m := DbListModel{list: l, defaultDbId: defaultDbId}
+	l := newListModel(items)
+	m := dbListModel{list: l, defaultDbId: defaultDbId}
 
 	return &m
 }
 
-func initListModel(items []list.Item) list.Model {
+func newListModel(items []list.Item) list.Model {
 	l := list.New(items, itemDelegate{}, listWidth, listHeight)
 	l.Title = "Choose default database for operations:"
 	l.SetShowStatusBar(true)
@@ -147,4 +148,12 @@ func initListModel(items []list.Item) list.Model {
 	l.Styles.HelpStyle = helpStyle
 
 	return l
+}
+
+func InitDbListModel(dbs []notionapi.Database, defaultDbId string) {
+	m := newDbListModel(dbs, defaultDbId)
+	if _, err := tea.NewProgram(m).Run(); err != nil {
+		fmt.Println("Error running program:", err)
+		os.Exit(1)
+	}
 }
