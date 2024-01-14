@@ -17,6 +17,7 @@ type cmdArgs struct {
 }
 
 const DefaultTitlePropKey = "title"
+const GreenCheckMark = "\033[32m✓\033[0m"
 
 func (a *cmdArgs) validateDefaultDb() error {
 	if a.dbId == "" {
@@ -46,6 +47,30 @@ func createEntryFromArgs(a cmdArgs) notion.DatabaseEntry {
 	return entry
 }
 
+func saveEntry(dbId string, entry notion.DatabaseEntry) tui.Response {
+	page, err := notion.AddDatabaseEntry(dbId, entry)
+	id := "save"
+
+	if err != nil {
+		return tui.Response{Id: id, Data: nil, Err: fmt.Errorf("error saving entry: %v", err)}
+	}
+
+	return tui.Response{Id: id, Data: page.URL, Err: nil}
+}
+
+func wrappedSaveEntry(dbId string, entry notion.DatabaseEntry) func() tui.Response {
+	return func() tui.Response {
+		return saveEntry(dbId, entry)
+	}
+}
+
+func createEntry() notion.DatabaseEntry {
+	if args.title == "" && args.content == "" {
+		return tui.InitForm(args.dbId)
+	}
+	return createEntryFromArgs(args)
+}
+
 var addEntryCmd = &cobra.Command{
 	Use:     "add",
 	Aliases: []string{"a"},
@@ -55,15 +80,13 @@ var addEntryCmd = &cobra.Command{
 			fmt.Printf("Error: %v\n", err)
 			return
 		}
-		dbId, title, content := args.dbId, args.title, args.content
 
-		if title == "" && content == "" {
-			tui.InitForm(dbId)
-			return
-		}
+		entry := createEntry()
 
-		entry := createEntryFromArgs(args)
-		tui.InitSave(dbId, entry)
+		m := tui.NewLoadingModel("Saving to Notion", wrappedSaveEntry(args.dbId, entry))
+		url := m.GetResponse("save").Data.(string)
+
+		fmt.Printf("%s Saved: %s\n", GreenCheckMark, url)
 	},
 }
 

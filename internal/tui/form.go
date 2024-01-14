@@ -2,7 +2,7 @@ package tui
 
 import (
 	"fmt"
-	"log"
+	"os"
 	"strconv"
 	"strings"
 
@@ -17,13 +17,16 @@ import (
 	"github.com/jomei/notionapi"
 )
 
-func InitForm(dbId string) {
+func InitForm(dbId string) notion.DatabaseEntry {
 	schema := getFilteredSchema(dbId)
-	p := tea.NewProgram(initialModel(dbId, schema))
+	model, err := tea.NewProgram(initialModel(dbId, schema)).Run()
 
-	if _, err := p.Run(); err != nil {
-		log.Fatal(err)
+	if err != nil {
+		fmt.Println("Error running program:", err)
+		os.Exit(1)
 	}
+
+	return model.(formModel).entry
 }
 
 const (
@@ -53,8 +56,9 @@ var placeholders = map[notionapi.PropertyType]string{
 	notionapi.PropertyTypePhoneNumber: "+48 123 456 789",
 }
 
-type model struct {
+type formModel struct {
 	dbId         string
+	entry        notion.DatabaseEntry
 	props        []PropInput
 	block        BlockInput
 	focusedProp  int
@@ -82,7 +86,7 @@ type keymap struct {
 	quit key.Binding
 }
 
-func (m model) toDatabaseEntry() (notion.DatabaseEntry, error) {
+func (m formModel) toDatabaseEntry() (notion.DatabaseEntry, error) {
 	entry := notion.DatabaseEntry{
 		Props:  make(notionapi.Properties),
 		Blocks: make([]notionapi.Block, 0),
@@ -202,7 +206,7 @@ func createBlockInput() BlockInput {
 	}
 }
 
-func initialModel(dbId string, schema map[string]notionapi.PropertyType) model {
+func initialModel(dbId string, schema map[string]notionapi.PropertyType) formModel {
 	// create map of prop inputs
 	propInputs := make([]PropInput, len(schema))
 
@@ -235,7 +239,7 @@ func initialModel(dbId string, schema map[string]notionapi.PropertyType) model {
 	help := help.New()
 	help.Styles.ShortKey = lipgloss.NewStyle().Foreground(darkGray)
 
-	return model{
+	return formModel{
 		dbId:         dbId,
 		props:        propInputs,
 		block:        createBlockInput(),
@@ -268,7 +272,7 @@ func getHelpKeyMap() keymap {
 	}
 }
 
-func (m model) helpView() string {
+func (m formModel) helpView() string {
 	return m.help.ShortHelpView([]key.Binding{
 		m.keymap.save,
 		m.keymap.next,
@@ -277,11 +281,11 @@ func (m model) helpView() string {
 	})
 }
 
-func (m model) Init() tea.Cmd {
+func (m formModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m formModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd = make([]tea.Cmd, len(m.props)+1) // +1 for block input
 
 	switch msg := msg.(type) {
@@ -293,8 +297,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.err = err
 				return m, nil
 			}
-			save := NewSaveModel(m.dbId, entry)
-			return save, save.Init()
+			m.entry = entry
+			return m, tea.Quit
 		case tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyShiftTab, tea.KeyCtrlP:
@@ -320,7 +324,7 @@ func getElemErrMsg(input textinput.Model) string {
 	return ""
 }
 
-func (m model) View() string {
+func (m formModel) View() string {
 	var inputsView strings.Builder
 
 	for _, value := range m.props {
@@ -337,7 +341,7 @@ func (m model) View() string {
 	return fmt.Sprintf("\n%s\n%s\n\n", inputsView.String(), m.helpView())
 }
 
-func (m *model) nextInput() {
+func (m *formModel) nextInput() {
 	m.blurCurrentElement()
 
 	if m.focusOnProps {
@@ -353,7 +357,7 @@ func (m *model) nextInput() {
 	m.focusCurrentElement()
 }
 
-func (m *model) prevInput() {
+func (m *formModel) prevInput() {
 	m.blurCurrentElement()
 
 	if m.focusOnProps {
@@ -370,7 +374,7 @@ func (m *model) prevInput() {
 	m.focusCurrentElement()
 }
 
-func (m *model) blurCurrentElement() {
+func (m *formModel) blurCurrentElement() {
 	if m.focusOnProps {
 		m.props[m.focusedProp].model.Blur()
 	} else {
@@ -378,7 +382,7 @@ func (m *model) blurCurrentElement() {
 	}
 }
 
-func (m *model) focusCurrentElement() {
+func (m *formModel) focusCurrentElement() {
 	if m.focusOnProps {
 		m.props[m.focusedProp].model.Focus()
 	} else {
