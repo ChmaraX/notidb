@@ -197,7 +197,6 @@ func createBlockInput() BlockInput {
 }
 
 func initialModel(props map[string]notionapi.PropertyType) formModel {
-	// create map of prop inputs
 	propInputs := make([]PropInput, len(props))
 
 	titleIdx := 0 // title is always first

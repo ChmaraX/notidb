@@ -46,7 +46,7 @@ type Response struct {
 
 func newLoadingModel(action string, funcs ...LoadingFunc) LoadingModel {
 	s := spinner.New()
-	s.Spinner = spinner.Dot
+	s.Spinner = spinner.Points
 
 	return LoadingModel{
 		spinner:    s,
@@ -101,7 +101,7 @@ func (m LoadingModel) View() string {
 		return "Done"
 	}
 
-	return m.spinner.View() + " " + m.action
+	return "\n" + m.spinner.View() + " " + m.action + "...\n"
 }
 
 func NewLoadingModel(action string, funcs ...LoadingFunc) LoadingModel {

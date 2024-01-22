@@ -89,10 +89,15 @@ var addEntryCmd = &cobra.Command{
 
 		entry := createEntry()
 
+		if entry.Props == nil && entry.Blocks == nil {
+			fmt.Println("No content to save")
+			return
+		}
+
 		m := tui.NewLoadingModel("Saving to Notion", wrappedSaveEntry(args.dbId, entry))
 		url := m.GetResponse("save").Data.(string)
 
-		fmt.Printf("%s Saved: %s\n", GreenCheckMark, url)
+		fmt.Printf("\n %s Saved: %s\n\n", GreenCheckMark, url)
 	},
 }
 
