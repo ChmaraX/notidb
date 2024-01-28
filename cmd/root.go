@@ -20,6 +20,11 @@ var rootCmd = &cobra.Command{
 	Short:         "notidb is a CLI tool for quick interaction with Notion databases",
 	Version:       "0.0.1",
 	SilenceErrors: true,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if cmd.Use != "init" {
+			initNotionClient()
+		}
+	},
 }
 
 func init() {

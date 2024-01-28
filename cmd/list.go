@@ -47,7 +47,6 @@ var setDefaultDbCmd = &cobra.Command{
 	Aliases: []string{"sd"},
 	Short:   "Set default database",
 	Run: func(cmd *cobra.Command, args []string) {
-
 		m := tui.NewLoadingModel("Calling Notion API - loading databases", loadDatabases, loadDefaultDatabase)
 		dbs := m.GetResponse("dbs").Data.([]notionapi.Database)
 		defaultDbId := m.GetResponse("defaultDb").Data.(string)

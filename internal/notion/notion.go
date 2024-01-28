@@ -2,8 +2,10 @@ package notion
 
 import (
 	"context"
+	"fmt"
+	"log"
+	"net/http"
 
-	"github.com/ChmaraX/notidb/internal"
 	"github.com/jomei/notionapi"
 )
 
@@ -58,10 +60,35 @@ func AddDatabaseEntry(dbId string, entry DatabaseEntry) (notionapi.Page, error) 
 	return *page, nil
 }
 
-func CreateNotionClient() {
-	c, err := internal.LoadConfig()
+func CreateNotionClient(apiKey string) {
+	err := validateNotionAPIKey(apiKey)
 	if err != nil {
-		panic(err)
+		log.Fatalf("error validating API key: %v \n", err)
 	}
-	NotionClient = notionapi.NewClient(notionapi.Token(c.ApiKey))
+	NotionClient = notionapi.NewClient(notionapi.Token(apiKey))
+}
+
+func validateNotionAPIKey(apiKey string) error {
+	url := "https://api.notion.com/v1/users/me"
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("error creating request: %v", err)
+	}
+
+	req.Header.Add("Authorization", "Bearer "+apiKey)
+	req.Header.Add("Notion-Version", "2021-08-16")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("error making request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("API key is invalid or doesn't have necessary permissions")
+	}
+
+	return nil
 }
