@@ -77,6 +77,23 @@ func createEntry() notion.DatabaseEntry {
 	return createEntryFromArgs(args)
 }
 
+/**
+ * Shortcut for args provided like this `notidb add "foo" "bar"`
+ * where "foo" is title and "bar" is content
+ */
+func loadShortcutArgs(arguments []string) {
+	// check if args are not already set
+	if args.title != "" || args.content != "" {
+		return
+	}
+	if len(arguments) > 0 {
+		args.title = arguments[0]
+	}
+	if len(arguments) > 1 {
+		args.content = arguments[1]
+	}
+}
+
 var addEntryCmd = &cobra.Command{
 	Use:     "add",
 	Aliases: []string{"a"},
@@ -86,6 +103,8 @@ var addEntryCmd = &cobra.Command{
 			fmt.Printf("Error: %v\n", err)
 			return
 		}
+
+		loadShortcutArgs(arguments)
 
 		entry := createEntry()
 
