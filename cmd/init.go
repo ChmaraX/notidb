@@ -14,7 +14,7 @@ import (
 var initCmd = &cobra.Command{
 	Use:     "init",
 	Aliases: []string{"i"},
-	Short:   "Initialize NotiDB CLI",
+	Short:   "Initializes NotiDB CLI",
 	Run: func(cmd *cobra.Command, args []string) {
 
 		keyring, err := keyring.NewKeyringManager()

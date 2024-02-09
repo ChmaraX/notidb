@@ -10,8 +10,10 @@ import (
 const (
 	usage   = `notidb`
 	example = `  notidb sd
-  notidb a --title "Meeting Notes" --body "Notes from the team meeting on 3rd Dec"
-  notidb le --database 1234567890abcdef`
+  notidb add
+  notidb add --title "Book Idea" --content "A book about the history of the internet"
+  notidb a -t "Book Idea" -c "A book about the history of the internet"
+  notidb "Book Idea" "A book about the history of the internet"`
 )
 
 var rootCmd = &cobra.Command{

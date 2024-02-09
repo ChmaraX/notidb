@@ -97,7 +97,7 @@ func loadShortcutArgs(arguments []string) {
 var addEntryCmd = &cobra.Command{
 	Use:     "add",
 	Aliases: []string{"a"},
-	Short:   "Adds a new entry to a database",
+	Short:   "Adds a new entry to the database",
 	Run: func(cmd *cobra.Command, arguments []string) {
 		if err := args.validateDefaultDb(); err != nil {
 			fmt.Printf("Error: %v\n", err)
@@ -123,5 +123,4 @@ var addEntryCmd = &cobra.Command{
 func init() {
 	addEntryCmd.Flags().StringVarP(&args.title, "title", "t", "", "Title of the new entry")
 	addEntryCmd.Flags().StringVarP(&args.content, "content", "c", "", "Content of the new entry")
-	addEntryCmd.Flags().StringVarP(&args.dbId, "database", "d", "", "ID of the database to add entry to")
 }
