@@ -16,6 +16,7 @@ func NewKeyringManager() (*KeyringManager, error) {
 		ServiceName: KeyringServiceName,
 		AllowedBackends: []keyring.BackendType{
 			keyring.KeychainBackend,
+			keyring.SecretServiceBackend,
 		},
 		KeychainName: "login",
 	})
