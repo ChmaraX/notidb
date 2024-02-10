@@ -82,6 +82,10 @@ func (m LoadingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Responses = append(m.Responses, msg)
 		m.err = msg.Err
 
+		if msg.Err != nil {
+			return m, tea.Quit
+		}
+
 		if len(m.Responses) == m.NumFuncs {
 			return m, tea.Quit
 		}

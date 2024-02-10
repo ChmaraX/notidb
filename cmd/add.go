@@ -114,8 +114,14 @@ var addEntryCmd = &cobra.Command{
 		}
 
 		m := tui.NewLoadingModel("Saving to Notion", wrappedSaveEntry(args.dbId, entry))
-		url := m.GetResponse("save").Data.(string)
+		res := m.GetResponse("save")
 
+		if res.Err != nil {
+			fmt.Printf("\n%s\n", res.Err)
+			return
+		}
+
+		url := res.Data.(string)
 		fmt.Printf("\n %s Saved: %s\n\n", GreenCheckMark, url)
 	},
 }
