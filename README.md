@@ -12,11 +12,11 @@ Its effective for things like quickly adding ad-hoc tasks, ideas, notes, todos, 
 
 ## Installation
 
-### Homebrew
-
 ```bash
-brew install notidb
+go install github.com/ChmaraX/notidb
 ```
+
+Or download binaries from the [releases](https://github.com/ChmaraX/notidb/releases)
 
 ## Usage
 
