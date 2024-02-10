@@ -1,0 +1,36 @@
+before:
+  hooks:
+    - go mod tidy
+    - go mod download
+
+builds:
+  - binary: notidb
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+
+release:
+  prerelease: auto
+  github:
+    owner: ChmaraX 
+    name: notidb
+
+universal_binaries:
+  - replace: true
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+
