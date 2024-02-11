@@ -4,15 +4,25 @@ before:
     - go mod download
 
 builds:
-  - binary: notidb
+  - id: linux
+    binary: notidb
     goos:
       - linux
-      - darwin
     goarch:
       - amd64
       - arm64
     env:
       - CGO_ENABLED=0
+
+  - id: darwin
+    binary: notidb
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=1
 
 release:
   prerelease: auto
