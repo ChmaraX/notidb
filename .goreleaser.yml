@@ -23,6 +23,17 @@ release:
 universal_binaries:
   - replace: true
 
+brews:
+  -
+    name: notidb 
+    homepage: https://github.com/ChmaraX/notidb
+    tap:
+      owner: ChmaraX 
+      name: homebrew-chmarax
+    commit_author:
+      name: chmarax 
+      email: adam.chmara1@gmail.com
+
 checksum:
   name_template: 'checksums.txt'
 
