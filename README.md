@@ -15,6 +15,11 @@ Its effective for things like quickly adding ad-hoc tasks, ideas, notes, todos, 
 ## Installation
 
 ```bash
+brew tap chmarax/chmarax
+brew install notidb
+```
+
+```bash
 go install github.com/ChmaraX/notidb
 ```
 
