@@ -10,6 +10,8 @@ This tool was mostly created as a way to quickly add entries to a database witho
 
 Its effective for things like quickly adding ad-hoc tasks, ideas, notes, todos, etc.
 
+![demo_2](imgs/demo_2.gif)
+
 ## Installation
 
 ```bash
