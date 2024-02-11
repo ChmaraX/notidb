@@ -14,10 +14,14 @@ Its effective for things like quickly adding ad-hoc tasks, ideas, notes, todos, 
 
 ## Installation
 
+### Homebrew
+
 ```bash
 brew tap chmarax/chmarax
 brew install notidb
 ```
+
+### Go
 
 ```bash
 go install github.com/ChmaraX/notidb
