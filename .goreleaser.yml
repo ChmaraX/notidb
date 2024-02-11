@@ -32,6 +32,7 @@ release:
 
 universal_binaries:
   - replace: true
+    id: darwin
 
 brews:
   -
